@@ -1,8 +1,20 @@
-import { useSession } from "@tanstack/react-start/server";
+import { getRequest, useSession } from "@tanstack/react-start/server";
 
 import { getState, hashPassword, mutate } from "./store.server";
 
 type SessionData = { admin?: boolean };
+
+// Un cookie « Secure » est ignoré par le navigateur en HTTP simple (hors localhost) :
+// on ne l'exige que si la requête arrive en HTTPS, directement ou via un reverse proxy.
+function isHttps(): boolean {
+  try {
+    const request = getRequest();
+    const forwarded = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    return (forwarded ?? new URL(request.url).protocol.replace(":", "")) === "https";
+  } catch {
+    return true;
+  }
+}
 
 async function sessionConfig() {
   const state = await getState();
@@ -10,6 +22,7 @@ async function sessionConfig() {
     password: state.sessionSecret,
     name: "bt_session",
     maxAge: 60 * 60 * 24 * 30,
+    cookie: { secure: isHttps() },
   };
 }
 
