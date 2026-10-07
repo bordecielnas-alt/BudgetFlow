@@ -24,12 +24,12 @@ export function checkBalance(
     if (close(sum, expected)) {
       return {
         status: "ok",
-        message: `Soldes vérifiés : ${euros(opening)} + ${euros(sum)} = ${euros(closing)}.`,
+        message: `Relevé vérifié : les opérations extraites (${euros(sum)}) expliquent exactement le relevé.`,
       };
     }
     return {
       status: "mismatch",
-      message: `Écart de ${euros(sum - expected)} : le relevé passe de ${euros(opening)} à ${euros(closing)} (${euros(expected)}), les opérations extraites totalisent ${euros(sum)}. Une ligne manque ou un montant est faux.`,
+      message: `Écart de ${euros(sum - expected)} avec le relevé : il annonce un mouvement de ${euros(expected)}, les opérations extraites totalisent ${euros(sum)}. Une ligne manque ou un montant est faux.`,
     };
   }
 
@@ -48,6 +48,6 @@ export function checkBalance(
 
   return {
     status: "unavailable",
-    message: "Pas de solde ni de total sur le document : vérifiez les lignes manuellement.",
+    message: "Aucun total imprimé sur le relevé : vérifiez les lignes à l'œil.",
   };
 }

@@ -3,7 +3,12 @@
 // service à démarrer : le volume ./data suffit.
 import { promises as fs } from "node:fs";
 
-import type { AiProvider, ImportRun, UserSettings } from "@/lib/budget-types";
+import {
+  DEFAULT_ACCOUNT,
+  type AiProvider,
+  type ImportRun,
+  type UserSettings,
+} from "@/lib/budget-types";
 import { DEFAULT_CATEGORIES, DEFAULT_RULES } from "@/lib/categories";
 
 export type StoredEntry = {
@@ -53,14 +58,13 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   date_format: "dd/MM/yyyy",
   ai_provider: "gemini",
   ai_model: "gemini-2.5-flash",
-  default_account: "",
+  default_account: DEFAULT_ACCOUNT,
   categories: DEFAULT_CATEGORIES,
   rules: DEFAULT_RULES,
   backup_enabled: true,
   backup_interval_hours: 24,
   backup_keep: 30,
   backup_last: null,
-  budgets: {},
   ai_price_in: null,
   ai_price_out: null,
 };
@@ -301,6 +305,31 @@ async function hydrate(parsed: AppState): Promise<{ state: AppState; changed: bo
   return { state, changed };
 }
 
+/**
+ * Compte par défaut : le plus utilisé des écritures existantes, sinon « Compte 1 ».
+ * Les écritures sans compte y sont rattachées. Renvoie true si l'état a changé.
+ */
+function assignDefaultAccount(state: AppState): boolean {
+  let changed = false;
+  if (!state.settings.default_account?.trim()) {
+    const counts = new Map<string, number>();
+    for (const entry of state.entries) {
+      const name = entry.account?.trim();
+      if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    const [mostUsed] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
+    state.settings.default_account = mostUsed ?? DEFAULT_ACCOUNT;
+    changed = true;
+  }
+  for (const entry of state.entries) {
+    if (!entry.account?.trim()) {
+      entry.account = state.settings.default_account;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 async function load(): Promise<AppState> {
   const driver = await getDriver();
   const restore = await takeRestoreFile();
@@ -329,6 +358,7 @@ async function load(): Promise<AppState> {
     applySnapshot(state, restore);
     changed = true;
   }
+  if (assignDefaultAccount(state)) changed = true;
   if (changed) await persist(state);
   return state;
 }

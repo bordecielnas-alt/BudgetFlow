@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PasswordRouteImport } from './routes/password'
+import { Route as AuthenticatedARangerRouteImport } from './routes/_authenticated/a-ranger'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDataRouteImport } from './routes/_authenticated/data'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
@@ -37,6 +38,11 @@ const PasswordRoute = PasswordRouteImport.update({
   id: '/password',
   path: '/password',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedARangerRoute = AuthenticatedARangerRouteImport.update({
+  id: '/a-ranger',
+  path: '/a-ranger',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/password': typeof PasswordRoute
+  '/a-ranger': typeof AuthenticatedARangerRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/data': typeof AuthenticatedDataRoute
   '/import': typeof AuthenticatedImportRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/password': typeof PasswordRoute
+  '/a-ranger': typeof AuthenticatedARangerRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/data': typeof AuthenticatedDataRoute
   '/import': typeof AuthenticatedImportRoute
@@ -90,6 +98,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/password': typeof PasswordRoute
+  '/_authenticated/a-ranger': typeof AuthenticatedARangerRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/data': typeof AuthenticatedDataRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
@@ -102,6 +111,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/password'
+    | '/a-ranger'
     | '/dashboard'
     | '/data'
     | '/import'
@@ -112,6 +122,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/password'
+    | '/a-ranger'
     | '/dashboard'
     | '/data'
     | '/import'
@@ -123,6 +134,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/password'
+    | '/_authenticated/a-ranger'
     | '/_authenticated/dashboard'
     | '/_authenticated/data'
     | '/_authenticated/import'
@@ -167,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/a-ranger': {
+      id: '/_authenticated/a-ranger'
+      path: '/a-ranger'
+      fullPath: '/a-ranger'
+      preLoaderRoute: typeof AuthenticatedARangerRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -206,6 +225,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedARangerRoute: typeof AuthenticatedARangerRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDataRoute: typeof AuthenticatedDataRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
@@ -214,6 +234,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedARangerRoute: AuthenticatedARangerRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDataRoute: AuthenticatedDataRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,

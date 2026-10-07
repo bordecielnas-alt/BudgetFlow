@@ -40,6 +40,7 @@ export function CategoryPicker({
   placeholder = "Choisir…",
   className,
   highlightEmpty = true,
+  variant = "outline",
 }: {
   value: string;
   categories: string[];
@@ -50,6 +51,8 @@ export function CategoryPicker({
   placeholder?: string;
   className?: string;
   highlightEmpty?: boolean;
+  /** « ghost » : sans bordure au repos, pour une cellule de tableau. */
+  variant?: "outline" | "ghost";
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -83,8 +86,11 @@ export function CategoryPicker({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "h-8 w-full justify-between gap-2 px-2 font-normal",
-            !value && highlightEmpty && "border-amber-500/60 text-muted-foreground",
+            "h-8 w-full justify-between gap-2 px-2 font-normal text-foreground",
+            variant === "ghost" &&
+              "border-transparent bg-transparent hover:border-input hover:bg-transparent data-[state=open]:border-ring",
+            !value && "text-muted-foreground",
+            !value && highlightEmpty && "border-warning/50 bg-warning-soft hover:bg-warning-soft",
             className,
           )}
         >
@@ -92,7 +98,12 @@ export function CategoryPicker({
             {value && <CategoryDot category={value} />}
             <span className="truncate">{value || placeholder}</span>
           </span>
-          <ChevronsUpDown className="size-3.5 shrink-0 opacity-50" />
+          <ChevronsUpDown
+            className={cn(
+              "size-3.5 shrink-0 opacity-50",
+              variant === "ghost" && "opacity-0 group-hover/row:opacity-50",
+            )}
+          />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
@@ -151,18 +162,22 @@ const SOURCE_LABELS: Record<CategorySource, { label: string; title: string; clas
   rule: {
     label: "règle",
     title: "Imposée par une règle automatique",
-    className: "border-sky-500/50 text-sky-700 dark:text-sky-300",
+    className: "border-transparent bg-primary-soft text-primary-text",
   },
   history: {
     label: "habitude",
     title: "Reprise de vos catégorisations précédentes pour ce tiers",
-    className: "border-violet-500/50 text-violet-700 dark:text-violet-300",
+    className: "border-transparent bg-secondary text-muted-foreground",
   },
-  ai: { label: "IA", title: "Proposée par l'IA", className: "" },
+  ai: {
+    label: "IA",
+    title: "Proposée par l'IA",
+    className: "border-transparent bg-secondary text-muted-foreground",
+  },
   manual: {
     label: "vous",
     title: "Choisie à la main",
-    className: "border-emerald-500/50 text-emerald-700 dark:text-emerald-300",
+    className: "border-transparent bg-income-soft text-income",
   },
   none: { label: "", title: "", className: "" },
 };
@@ -178,7 +193,7 @@ export function CategorySourceBadge({
     return (
       <Badge
         variant="outline"
-        className="shrink-0 border-amber-500/60 px-1.5 text-[10px] text-amber-700 dark:text-amber-300"
+        className="shrink-0 border-transparent bg-warning-soft px-1.5 text-[10px] text-warning"
         title="L'IA hésite : vérifiez la catégorie"
       >
         à vérifier

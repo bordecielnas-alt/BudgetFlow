@@ -15,7 +15,8 @@ export type ExtractionRequest = {
   user: string;
 };
 
-export const SUPPORTED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+/** Relevés PDF uniquement (texte ou scannés). */
+export const SUPPORTED_MIME_TYPES = ["application/pdf"];
 
 export type TokenCount = { input_tokens: number; output_tokens: number };
 
@@ -27,7 +28,7 @@ export async function extractStatement(
   }
   if (!SUPPORTED_MIME_TYPES.includes(request.mimeType)) {
     throw new Error(
-      `Format non pris en charge : ${request.mimeType || "inconnu"} (PDF, JPEG, PNG ou WebP).`,
+      `Format non pris en charge : ${request.mimeType || "inconnu"} (PDF uniquement).`,
     );
   }
   const { text, tokens } =
@@ -85,20 +86,10 @@ const CLAUDE_CURRENT = [
 async function callAnthropic(request: ExtractionRequest): Promise<CallResult> {
   const client = new Anthropic({ apiKey: request.apiKey });
   const current = CLAUDE_CURRENT.includes(request.model);
-  const source =
-    request.mimeType === "application/pdf"
-      ? ({
-          type: "document",
-          source: { type: "base64", media_type: "application/pdf", data: request.base64 },
-        } as const)
-      : ({
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: request.mimeType as "image/jpeg" | "image/png" | "image/webp",
-            data: request.base64,
-          },
-        } as const);
+  const source = {
+    type: "document",
+    source: { type: "base64", media_type: "application/pdf", data: request.base64 },
+  } as const;
 
   try {
     // Streaming : un relevé de plusieurs mois peut produire une longue réponse.
@@ -251,10 +242,7 @@ async function callGemini(request: ExtractionRequest): Promise<CallResult> {
 
 async function callOpenAi(request: ExtractionRequest): Promise<CallResult> {
   const dataUrl = `data:${request.mimeType};base64,${request.base64}`;
-  const file =
-    request.mimeType === "application/pdf"
-      ? { type: "input_file", filename: request.fileName, file_data: dataUrl }
-      : { type: "input_image", image_url: dataUrl };
+  const file = { type: "input_file", filename: request.fileName, file_data: dataUrl };
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",

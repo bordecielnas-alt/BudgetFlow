@@ -4,14 +4,18 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import {
   Bot,
-  Check,
   Database,
   Download,
   KeyRound,
+  Landmark,
   Loader2,
+  Monitor,
+  Moon,
   Palette,
+  Pencil,
   Plus,
   RotateCcw,
+  Sun,
   Tags,
   Trash2,
   Upload,
@@ -21,6 +25,7 @@ import {
 import { toast } from "sonner";
 
 import { CategoryDot } from "@/components/CategoryPicker";
+import { PageHeader } from "@/components/page";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -47,12 +52,21 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { changeLogin, changePassword, getAuthState } from "@/lib/auth.functions";
 import { Switch } from "@/components/ui/switch";
+import { useEntries } from "@/hooks/useEntries";
 import { useSettings } from "@/hooks/useSettings";
 import { knownPrice } from "@/lib/ai/pricing";
-import { backupNow, downloadBackup, getBackups, restoreBackupFn } from "@/lib/data.functions";
+import {
+  backupNow,
+  downloadBackup,
+  getBackups,
+  renameAccount,
+  renameCategory,
+  restoreBackupFn,
+} from "@/lib/data.functions";
 import { AI_PROVIDERS, type AiProvider } from "@/lib/budget-types";
+import { LEGACY_CATEGORY_NAMES } from "@/lib/categories";
 import { getAiConfig, saveAiConfig, testAiConfig } from "@/lib/import.functions";
-import { THEMES } from "@/lib/themes";
+import { normalizeTheme, THEMES } from "@/lib/themes";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
@@ -61,7 +75,7 @@ export const Route = createFileRoute("/_authenticated/settings")({
       {
         name: "description",
         content:
-          "Gérez votre compte, l'apparence, le fournisseur d'IA, les catégories et les sauvegardes.",
+          "Comptes bancaires, apparence, fournisseur d'IA, catégories, sauvegardes et connexion.",
       },
       { property: "og:title", content: "Réglages — BudgetFlow" },
       {
@@ -75,15 +89,13 @@ export const Route = createFileRoute("/_authenticated/settings")({
 
 function SettingsPage() {
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Réglages</h1>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Réglages" />
 
-      <Tabs defaultValue="account">
+      <Tabs defaultValue="accounts">
         <TabsList className="h-auto flex-wrap">
-          <TabsTrigger value="account">
-            <User className="mr-2 size-4" /> Compte
+          <TabsTrigger value="accounts">
+            <Landmark className="mr-2 size-4" /> Comptes
           </TabsTrigger>
           <TabsTrigger value="appearance">
             <Palette className="mr-2 size-4" /> Apparence
@@ -97,9 +109,15 @@ function SettingsPage() {
           <TabsTrigger value="backup">
             <Database className="mr-2 size-4" /> Sauvegardes
           </TabsTrigger>
+          <TabsTrigger value="login">
+            <User className="mr-2 size-4" /> Connexion
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="account" className="pt-4">
+        <TabsContent value="accounts" className="pt-4">
+          <BankAccountsSection />
+        </TabsContent>
+        <TabsContent value="login" className="pt-4">
           <AccountSection />
         </TabsContent>
         <TabsContent value="appearance" className="pt-4">
@@ -165,7 +183,7 @@ function AccountSection() {
   return (
     <Card className="max-w-xl">
       <CardHeader>
-        <CardTitle className="text-base">Compte</CardTitle>
+        <CardTitle>Connexion</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <form className="space-y-3" onSubmit={submitLogin}>
@@ -230,46 +248,53 @@ function AccountSection() {
 
 function AppearanceSection() {
   const { settings, update } = useSettings();
+  const theme = normalizeTheme(settings.theme);
+  const icons = { system: Monitor, light: Sun, dark: Moon } as const;
 
   return (
-    <Card>
+    <Card className="max-w-2xl">
       <CardHeader>
-        <CardTitle className="text-base">Apparence</CardTitle>
+        <CardTitle>Apparence</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {THEMES.map((theme) => (
-            <button
-              key={theme.id}
-              type="button"
-              onClick={() => update.mutate({ theme: theme.id })}
-              className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-accent ${
-                settings.theme === theme.id ? "border-primary ring-1 ring-primary" : "border-border"
-              }`}
-            >
-              <span className="flex gap-1">
-                {theme.swatch.map((color: string) => (
-                  <span
-                    key={color}
-                    className="size-4 rounded-full border border-border"
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </span>
-              <span className="flex-1 text-sm font-medium">{theme.label}</span>
-              {settings.theme === theme.id && <Check className="size-4 text-primary" />}
-            </button>
-          ))}
+        <div className="space-y-2">
+          <Label>Thème</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {THEMES.map((item) => {
+              const Icon = icons[item.id];
+              const active = theme === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => update.mutate({ theme: item.id })}
+                  aria-pressed={active}
+                  className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    active
+                      ? "border-primary bg-primary-soft font-medium text-primary-text"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  <Icon className="size-5" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            « Système » suit le réglage clair / sombre de l'appareil.
+          </p>
         </div>
 
         <div className="space-y-2">
-          <Label>Densité</Label>
+          <Label>Densité des tableaux</Label>
           <div className="flex gap-2">
             {(["comfortable", "compact"] as const).map((density) => (
               <Button
                 key={density}
-                variant={settings.density === density ? "default" : "outline"}
+                variant={settings.density === density ? "secondary" : "ghost"}
                 size="sm"
+                aria-pressed={settings.density === density}
                 onClick={() => update.mutate({ density })}
               >
                 {density === "comfortable" ? "Confortable" : "Compacte"}
@@ -279,6 +304,140 @@ function AppearanceSection() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/** Comptes bancaires : renommage partout et compte proposé par défaut. */
+function BankAccountsSection() {
+  const { settings, update } = useSettings();
+  const { data: entries = [] } = useEntries();
+  const queryClient = useQueryClient();
+  const runRename = useServerFn(renameAccount);
+  const counts = new Map<string, number>();
+  for (const entry of entries) counts.set(entry.account, (counts.get(entry.account) ?? 0) + 1);
+  const names = [...new Set([settings.default_account, ...counts.keys()])]
+    .filter(Boolean)
+    .sort((a, b) =>
+      a === settings.default_account
+        ? -1
+        : b === settings.default_account
+          ? 1
+          : a.localeCompare(b, "fr"),
+    );
+
+  async function doRename(from: string, to: string) {
+    try {
+      const result = await runRename({ data: { from, to } });
+      toast.success(`« ${from} » renommé en « ${to} » (${result.renamed} opération(s))`);
+      await queryClient.invalidateQueries();
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  }
+
+  function rename(from: string, to: string) {
+    const target = to.trim();
+    if (!target || target === from) return;
+    if (names.includes(target)) {
+      toast(`Le compte « ${target} » existe déjà`, {
+        description: "Renommer fusionnera les opérations des deux comptes.",
+        action: { label: "Fusionner", onClick: () => void doRename(from, target) },
+      });
+      return;
+    }
+    void doRename(from, target);
+  }
+
+  return (
+    <Card className="max-w-2xl">
+      <CardHeader>
+        <CardTitle>Comptes bancaires</CardTitle>
+        <CardDescription>
+          Les imports vont sur le compte par défaut. Renommer un compte met à jour toutes ses
+          opérations.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-y rounded-lg border">
+          {names.map((name) => {
+            const count = counts.get(name) ?? 0;
+            return (
+              <li key={name} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+                <Landmark className="size-4 shrink-0 text-muted-foreground" />
+                <InlineName
+                  name={name}
+                  label={`Nom du compte ${name}`}
+                  onRename={(to) => rename(name, to)}
+                />
+                <span className="num text-xs text-muted-foreground">
+                  {count} opération{count > 1 ? "s" : ""}
+                </span>
+                {name === settings.default_account ? (
+                  <Badge variant="default">Par défaut</Badge>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      update.mutate({ default_account: name });
+                      toast.success(`« ${name} » devient le compte par défaut`);
+                    }}
+                  >
+                    Mettre par défaut
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Un autre compte apparaît ici dès qu'un import ou une opération l'utilise.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Nom modifiable en place : crayon visible, champ au survol ou au focus. */
+function InlineName({
+  name,
+  label,
+  onRename,
+}: {
+  name: string;
+  label: string;
+  onRename: (to: string) => void;
+}) {
+  const [draft, setDraft] = useState(name);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => setDraft(name), [name]);
+  return (
+    <div className="group/name relative flex min-w-0 flex-1 items-center">
+      <Input
+        ref={input}
+        value={draft}
+        aria-label={label}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (draft.trim() && draft.trim() !== name) onRename(draft);
+          else setDraft(name);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") setDraft(name);
+        }}
+        className="h-8 min-w-0 flex-1 border-transparent bg-transparent pl-2 pr-8 font-medium hover:border-input"
+      />
+      <button
+        type="button"
+        onClick={() => input.current?.select()}
+        className="absolute right-1.5 rounded p-1 text-muted-foreground opacity-60 hover:bg-accent hover:text-foreground group-hover/name:opacity-100 group-focus-within/name:opacity-0"
+        aria-label={`Renommer ${name}`}
+        tabIndex={-1}
+      >
+        <Pencil className="size-3.5" />
+      </button>
+    </div>
   );
 }
 
@@ -347,7 +506,7 @@ function AiSection() {
   return (
     <Card className="max-w-2xl">
       <CardHeader>
-        <CardTitle className="text-base">Fournisseur d'IA pour la lecture des relevés</CardTitle>
+        <CardTitle>Fournisseur d'IA pour la lecture des relevés</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -482,12 +641,39 @@ function PriceFields({ model }: { model: string }) {
 
 function CategoriesSection() {
   const { settings, update } = useSettings();
+  const runRename = useServerFn(renameCategory);
+  const queryClient = useQueryClient();
+
+  async function renameOne(from: string, to: string) {
+    const target = to.trim();
+    if (!target || target === from) return;
+    try {
+      const result = await runRename({ data: { from, to: target } });
+      toast.success(
+        settings.categories.includes(target)
+          ? `« ${from} » fusionnée dans « ${target} » (${result.renamed} opération(s))`
+          : `« ${from} » renommée en « ${target} » (${result.renamed} opération(s))`,
+      );
+      await queryClient.invalidateQueries();
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  }
+  // Noms anglais ou sans accent repris de l'ancienne application : proposés une fois.
+  const legacy = Object.entries(LEGACY_CATEGORY_NAMES).filter(([from]) =>
+    settings.categories.includes(from),
+  );
+  const [legacyBusy, setLegacyBusy] = useState(false);
+
+  async function renameLegacy() {
+    setLegacyBusy(true);
+    for (const [from, to] of legacy) await renameOne(from, to);
+    setLegacyBusy(false);
+  }
+
   const [newCategory, setNewCategory] = useState("");
   const [pattern, setPattern] = useState("");
   const [ruleCategory, setRuleCategory] = useState("");
-  const [account, setAccount] = useState(settings.default_account);
-
-  useEffect(() => setAccount(settings.default_account), [settings.default_account]);
 
   function addCategory(event: React.FormEvent) {
     event.preventDefault();
@@ -502,20 +688,7 @@ function CategoriesSection() {
   }
 
   function removeCategory(category: string) {
-    const { [category]: _removed, ...budgets } = settings.budgets;
-    update.mutate({
-      categories: settings.categories.filter((item) => item !== category),
-      budgets,
-    });
-  }
-
-  function setBudget(category: string, raw: string) {
-    const value = Number(raw.replace(/\s/g, "").replace(",", "."));
-    const { [category]: _previous, ...budgets } = settings.budgets;
-    if (raw.trim() && Number.isFinite(value) && value > 0) {
-      budgets[category] = Math.round(value * 100) / 100;
-    }
-    update.mutate({ budgets });
+    update.mutate({ categories: settings.categories.filter((item) => item !== category) });
   }
 
   function addRule(event: React.FormEvent) {
@@ -534,22 +707,38 @@ function CategoriesSection() {
     <div className="space-y-4">
       <Card className="max-w-2xl">
         <CardHeader>
-          <CardTitle className="text-base">Catégories</CardTitle>
+          <CardTitle>Catégories</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            L'IA choisit obligatoirement parmi cette liste (ou laisse vide si rien ne convient). Le
-            budget mensuel est facultatif : le dashboard signale son dépassement.
+            L'IA choisit obligatoirement parmi cette liste, ou laisse vide si rien ne convient : la
+            ligne passe alors dans « À ranger ».
           </p>
+          {legacy.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-primary-soft px-3 py-2.5 text-sm">
+              <span className="min-w-0 flex-1">
+                Passer en français :{" "}
+                {legacy.map(([from, to], index) => (
+                  <span key={from}>
+                    {index > 0 && ", "}
+                    <span className="text-muted-foreground">{from}</span> → <strong>{to}</strong>
+                  </span>
+                ))}
+                . Les opérations et les règles suivent.
+              </span>
+              <Button size="sm" onClick={() => void renameLegacy()} disabled={legacyBusy}>
+                {legacyBusy && <Loader2 className="animate-spin" />} Renommer
+              </Button>
+            </div>
+          )}
           <ul className="divide-y divide-border rounded-md border border-border">
             {settings.categories.map((category) => (
               <li key={category} className="flex items-center gap-3 px-3 py-1.5 text-sm">
                 <CategoryDot category={category} />
-                <span className="flex-1">{category}</span>
-                <BudgetInput
-                  value={settings.budgets[category]}
-                  onCommit={(raw) => setBudget(category, raw)}
-                  label={`Budget mensuel ${category}`}
+                <InlineName
+                  name={category}
+                  label={`Nom de la catégorie ${category}`}
+                  onRename={(to) => void renameOne(category, to)}
                 />
                 <Button
                   variant="ghost"
@@ -579,7 +768,7 @@ function CategoriesSection() {
 
       <Card className="max-w-2xl">
         <CardHeader>
-          <CardTitle className="text-base">Règles automatiques</CardTitle>
+          <CardTitle>Règles automatiques</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -633,66 +822,6 @@ function CategoriesSection() {
           </form>
         </CardContent>
       </Card>
-
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-base">Compte par défaut</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-2">
-          <div className="space-y-2">
-            <Label htmlFor="default-account">Proposé à chaque import</Label>
-            <Input
-              id="default-account"
-              placeholder="ex. SG Joint"
-              value={account}
-              onChange={(e) => setAccount(e.target.value)}
-              className="w-64"
-            />
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => {
-              update.mutate({ default_account: account.trim() });
-              toast.success("Compte par défaut enregistré");
-            }}
-          >
-            Enregistrer
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-/** Montant libre (virgule acceptée), enregistré à la sortie du champ. */
-function BudgetInput({
-  value,
-  onCommit,
-  label,
-}: {
-  value: number | undefined;
-  onCommit: (raw: string) => void;
-  label: string;
-}) {
-  const [draft, setDraft] = useState(value ? String(value) : "");
-  useEffect(() => setDraft(value ? String(value) : ""), [value]);
-  return (
-    <div className="flex items-center gap-1">
-      <Input
-        aria-label={label}
-        inputMode="decimal"
-        placeholder="Budget / mois"
-        className="h-8 w-32 text-right"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          if (draft !== (value ? String(value) : "")) onCommit(draft);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-        }}
-      />
-      <span className="text-xs text-muted-foreground">€</span>
     </div>
   );
 }
@@ -768,7 +897,7 @@ function BackupSection() {
   return (
     <Card className="max-w-2xl">
       <CardHeader>
-        <CardTitle className="text-base">Sauvegarde automatique</CardTitle>
+        <CardTitle>Sauvegarde automatique</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between gap-4">
@@ -824,8 +953,8 @@ function BackupSection() {
         </div>
         <p className="text-xs text-muted-foreground">
           Chaque sauvegarde produit un CSV des écritures (pour un tableur) et un fichier JSON
-          complet : écritures, catégories, règles, budgets et réglages. Les clés API et le mot de
-          passe n'y figurent jamais.
+          complet : écritures, catégories, règles et réglages. Les clés API et le mot de passe n'y
+          figurent jamais.
         </p>
         {backups.data?.files?.length ? (
           <ul className="divide-y divide-border rounded-md border border-border text-sm">
@@ -885,8 +1014,7 @@ function BackupSection() {
           <AlertDialogHeader>
             <AlertDialogTitle>Restaurer cette sauvegarde ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Les écritures, catégories, règles, budgets et réglages actuels seront remplacés par
-              ceux de{" "}
+              Les écritures, catégories, règles et réglages actuels seront remplacés par ceux de{" "}
               <strong>
                 {pendingRestore &&
                   ("name" in pendingRestore ? pendingRestore.name : pendingRestore.label)}

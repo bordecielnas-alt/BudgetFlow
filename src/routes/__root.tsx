@@ -10,6 +10,7 @@ import {
 import { type ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
+import { THEME_BOOT_SCRIPT } from "@/lib/themes";
 import appCss from "../styles.css?url";
 
 function NotFoundComponent() {
@@ -110,8 +111,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <HeadContent />
       </head>
       <body>

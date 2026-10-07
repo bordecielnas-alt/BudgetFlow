@@ -61,11 +61,12 @@ export const analyzeStatement = createServerFn({ method: "POST" })
     z
       .object({
         fileName: z.string().min(1).max(300),
-        mimeType: z.string().max(100),
+        mimeType: z.literal("application/pdf", {
+          errorMap: () => ({ message: "Seuls les relevés PDF sont acceptés." }),
+        }),
         // ~20 Mo de fichier une fois décodé
         base64: z.string().min(1).max(28_000_000),
         account: z.string().trim().max(120),
-        note: z.string().max(1000).default(""),
       })
       .parse(input),
   )
@@ -93,11 +94,11 @@ export const analyzeStatement = createServerFn({ method: "POST" })
       mimeType: data.mimeType,
       base64: data.base64,
       system: buildSystemPrompt(categories, memoryExamples(memory)),
-      user: buildUserPrompt(data.fileName, data.note),
+      user: buildUserPrompt(data.fileName),
     });
 
     const candidates = buildCandidates(raw, {
-      account: data.account,
+      account: data.account || state.settings.default_account,
       categories,
       rules,
       existing: state.entries,

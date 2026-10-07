@@ -1,0 +1,968 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-07T17:29:00.306Z",
+  "title": "Design System: BudgetFlow",
+  "extensions": {
+    "colorMeta": {
+      "background": {
+        "role": "neutral",
+        "displayName": "Toile gris perle (clair)",
+        "canonical": "oklch(0.982 0.003 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.003 265)",
+          "oklch(0.26 0.003 265)",
+          "oklch(0.37 0.003 265)",
+          "oklch(0.48 0.003 265)",
+          "oklch(0.6 0.003 265)",
+          "oklch(0.71 0.003 265)",
+          "oklch(0.83 0.003 265)",
+          "oklch(0.95 0.003 265)"
+        ]
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Encre de texte (clair)",
+        "canonical": "oklch(0.21 0.018 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.018 265)",
+          "oklch(0.26 0.018 265)",
+          "oklch(0.37 0.018 265)",
+          "oklch(0.48 0.018 265)",
+          "oklch(0.6 0.018 265)",
+          "oklch(0.71 0.018 265)",
+          "oklch(0.83 0.018 265)",
+          "oklch(0.95 0.018 265)"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Carte (clair)",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.6 0 0)",
+          "oklch(0.71 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "popover": {
+        "role": "neutral",
+        "displayName": "Couche (clair)",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.6 0 0)",
+          "oklch(0.71 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Barre latérale (clair)",
+        "canonical": "oklch(0.962 0.005 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 265)",
+          "oklch(0.26 0.005 265)",
+          "oklch(0.37 0.005 265)",
+          "oklch(0.48 0.005 265)",
+          "oklch(0.6 0.005 265)",
+          "oklch(0.71 0.005 265)",
+          "oklch(0.83 0.005 265)",
+          "oklch(0.95 0.005 265)"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Indigo d'action (clair)",
+        "canonical": "oklch(0.52 0.19 274)",
+        "tonalRamp": [
+          "oklch(0.15 0.19 274)",
+          "oklch(0.26 0.19 274)",
+          "oklch(0.37 0.19 274)",
+          "oklch(0.48 0.19 274)",
+          "oklch(0.6 0.19 274)",
+          "oklch(0.71 0.19 274)",
+          "oklch(0.83 0.19 274)",
+          "oklch(0.95 0.19 274)"
+        ]
+      },
+      "primary-foreground": {
+        "role": "primary",
+        "displayName": "Texte sur indigo (clair)",
+        "canonical": "oklch(0.99 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.6 0 0)",
+          "oklch(0.71 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "primary-text": {
+        "role": "primary",
+        "displayName": "Indigo de texte (clair)",
+        "canonical": "oklch(0.5 0.19 274)",
+        "tonalRamp": [
+          "oklch(0.15 0.19 274)",
+          "oklch(0.26 0.19 274)",
+          "oklch(0.37 0.19 274)",
+          "oklch(0.48 0.19 274)",
+          "oklch(0.6 0.19 274)",
+          "oklch(0.71 0.19 274)",
+          "oklch(0.83 0.19 274)",
+          "oklch(0.95 0.19 274)"
+        ]
+      },
+      "primary-soft": {
+        "role": "primary",
+        "displayName": "Voile indigo (clair)",
+        "canonical": "oklch(0.52 0.19 274 / 10%)",
+        "tonalRamp": [
+          "oklch(0.15 0.19 274)",
+          "oklch(0.26 0.19 274)",
+          "oklch(0.37 0.19 274)",
+          "oklch(0.48 0.19 274)",
+          "oklch(0.6 0.19 274)",
+          "oklch(0.71 0.19 274)",
+          "oklch(0.83 0.19 274)",
+          "oklch(0.95 0.19 274)"
+        ]
+      },
+      "secondary": {
+        "role": "neutral",
+        "displayName": "Gris secondaire (clair)",
+        "canonical": "oklch(0.955 0.005 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 265)",
+          "oklch(0.26 0.005 265)",
+          "oklch(0.37 0.005 265)",
+          "oklch(0.48 0.005 265)",
+          "oklch(0.6 0.005 265)",
+          "oklch(0.71 0.005 265)",
+          "oklch(0.83 0.005 265)",
+          "oklch(0.95 0.005 265)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Gris de remplissage (clair)",
+        "canonical": "oklch(0.955 0.005 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 265)",
+          "oklch(0.26 0.005 265)",
+          "oklch(0.37 0.005 265)",
+          "oklch(0.48 0.005 265)",
+          "oklch(0.6 0.005 265)",
+          "oklch(0.71 0.005 265)",
+          "oklch(0.83 0.005 265)",
+          "oklch(0.95 0.005 265)"
+        ]
+      },
+      "muted-foreground": {
+        "role": "neutral",
+        "displayName": "Texte atténué (clair)",
+        "canonical": "oklch(0.49 0.02 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.02 265)",
+          "oklch(0.26 0.02 265)",
+          "oklch(0.37 0.02 265)",
+          "oklch(0.48 0.02 265)",
+          "oklch(0.6 0.02 265)",
+          "oklch(0.71 0.02 265)",
+          "oklch(0.83 0.02 265)",
+          "oklch(0.95 0.02 265)"
+        ]
+      },
+      "accent": {
+        "role": "neutral",
+        "displayName": "Gris de survol (clair)",
+        "canonical": "oklch(0.945 0.007 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.007 265)",
+          "oklch(0.26 0.007 265)",
+          "oklch(0.37 0.007 265)",
+          "oklch(0.48 0.007 265)",
+          "oklch(0.6 0.007 265)",
+          "oklch(0.71 0.007 265)",
+          "oklch(0.83 0.007 265)",
+          "oklch(0.95 0.007 265)"
+        ]
+      },
+      "destructive": {
+        "role": "tertiary",
+        "displayName": "Rouge d'erreur (clair)",
+        "canonical": "oklch(0.55 0.2 27)",
+        "tonalRamp": [
+          "oklch(0.15 0.2 27)",
+          "oklch(0.26 0.2 27)",
+          "oklch(0.37 0.2 27)",
+          "oklch(0.48 0.2 27)",
+          "oklch(0.6 0.2 27)",
+          "oklch(0.71 0.2 27)",
+          "oklch(0.83 0.2 27)",
+          "oklch(0.95 0.2 27)"
+        ]
+      },
+      "danger-soft": {
+        "role": "tertiary",
+        "displayName": "Voile rouge (clair)",
+        "canonical": "oklch(0.55 0.2 27 / 10%)",
+        "tonalRamp": [
+          "oklch(0.15 0.2 27)",
+          "oklch(0.26 0.2 27)",
+          "oklch(0.37 0.2 27)",
+          "oklch(0.48 0.2 27)",
+          "oklch(0.6 0.2 27)",
+          "oklch(0.71 0.2 27)",
+          "oklch(0.83 0.2 27)",
+          "oklch(0.95 0.2 27)"
+        ]
+      },
+      "income": {
+        "role": "secondary",
+        "displayName": "Vert des entrées (clair)",
+        "canonical": "oklch(0.5 0.13 158)",
+        "tonalRamp": [
+          "oklch(0.15 0.13 158)",
+          "oklch(0.26 0.13 158)",
+          "oklch(0.37 0.13 158)",
+          "oklch(0.48 0.13 158)",
+          "oklch(0.6 0.13 158)",
+          "oklch(0.71 0.13 158)",
+          "oklch(0.83 0.13 158)",
+          "oklch(0.95 0.13 158)"
+        ]
+      },
+      "income-soft": {
+        "role": "secondary",
+        "displayName": "Voile vert (clair)",
+        "canonical": "oklch(0.5 0.13 158 / 11%)",
+        "tonalRamp": [
+          "oklch(0.15 0.13 158)",
+          "oklch(0.26 0.13 158)",
+          "oklch(0.37 0.13 158)",
+          "oklch(0.48 0.13 158)",
+          "oklch(0.6 0.13 158)",
+          "oklch(0.71 0.13 158)",
+          "oklch(0.83 0.13 158)",
+          "oklch(0.95 0.13 158)"
+        ]
+      },
+      "warning": {
+        "role": "secondary",
+        "displayName": "Ambre à ranger (clair)",
+        "canonical": "oklch(0.55 0.13 66)",
+        "tonalRamp": [
+          "oklch(0.15 0.13 66)",
+          "oklch(0.26 0.13 66)",
+          "oklch(0.37 0.13 66)",
+          "oklch(0.48 0.13 66)",
+          "oklch(0.6 0.13 66)",
+          "oklch(0.71 0.13 66)",
+          "oklch(0.83 0.13 66)",
+          "oklch(0.95 0.13 66)"
+        ]
+      },
+      "warning-soft": {
+        "role": "secondary",
+        "displayName": "Voile ambre (clair)",
+        "canonical": "oklch(0.75 0.15 80 / 18%)",
+        "tonalRamp": [
+          "oklch(0.15 0.15 80)",
+          "oklch(0.26 0.15 80)",
+          "oklch(0.37 0.15 80)",
+          "oklch(0.48 0.15 80)",
+          "oklch(0.6 0.15 80)",
+          "oklch(0.71 0.15 80)",
+          "oklch(0.83 0.15 80)",
+          "oklch(0.95 0.15 80)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Filet (clair)",
+        "canonical": "oklch(0.91 0.007 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.007 265)",
+          "oklch(0.26 0.007 265)",
+          "oklch(0.37 0.007 265)",
+          "oklch(0.48 0.007 265)",
+          "oklch(0.6 0.007 265)",
+          "oklch(0.71 0.007 265)",
+          "oklch(0.83 0.007 265)",
+          "oklch(0.95 0.007 265)"
+        ]
+      },
+      "input": {
+        "role": "neutral",
+        "displayName": "Filet de champ (clair)",
+        "canonical": "oklch(0.87 0.01 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.01 265)",
+          "oklch(0.26 0.01 265)",
+          "oklch(0.37 0.01 265)",
+          "oklch(0.48 0.01 265)",
+          "oklch(0.6 0.01 265)",
+          "oklch(0.71 0.01 265)",
+          "oklch(0.83 0.01 265)",
+          "oklch(0.95 0.01 265)"
+        ]
+      },
+      "ring": {
+        "role": "primary",
+        "displayName": "Anneau de focus (clair)",
+        "canonical": "oklch(0.6 0.17 274)",
+        "tonalRamp": [
+          "oklch(0.15 0.17 274)",
+          "oklch(0.26 0.17 274)",
+          "oklch(0.37 0.17 274)",
+          "oklch(0.48 0.17 274)",
+          "oklch(0.6 0.17 274)",
+          "oklch(0.71 0.17 274)",
+          "oklch(0.83 0.17 274)",
+          "oklch(0.95 0.17 274)"
+        ]
+      },
+      "chart-1": {
+        "role": "neutral",
+        "displayName": "Barres sorties (clair)",
+        "canonical": "oklch(0.58 0.16 274)",
+        "tonalRamp": [
+          "oklch(0.15 0.16 274)",
+          "oklch(0.26 0.16 274)",
+          "oklch(0.37 0.16 274)",
+          "oklch(0.48 0.16 274)",
+          "oklch(0.6 0.16 274)",
+          "oklch(0.71 0.16 274)",
+          "oklch(0.83 0.16 274)",
+          "oklch(0.95 0.16 274)"
+        ]
+      },
+      "chart-2": {
+        "role": "neutral",
+        "displayName": "Barres entrées (clair)",
+        "canonical": "oklch(0.62 0.14 158)",
+        "tonalRamp": [
+          "oklch(0.15 0.14 158)",
+          "oklch(0.26 0.14 158)",
+          "oklch(0.37 0.14 158)",
+          "oklch(0.48 0.14 158)",
+          "oklch(0.6 0.14 158)",
+          "oklch(0.71 0.14 158)",
+          "oklch(0.83 0.14 158)",
+          "oklch(0.95 0.14 158)"
+        ]
+      },
+      "chart-grid": {
+        "role": "neutral",
+        "displayName": "Grille de graphique (clair)",
+        "canonical": "oklch(0.21 0.018 265 / 7%)",
+        "tonalRamp": [
+          "oklch(0.15 0.018 265)",
+          "oklch(0.26 0.018 265)",
+          "oklch(0.37 0.018 265)",
+          "oklch(0.48 0.018 265)",
+          "oklch(0.6 0.018 265)",
+          "oklch(0.71 0.018 265)",
+          "oklch(0.83 0.018 265)",
+          "oklch(0.95 0.018 265)"
+        ]
+      },
+      "background-dark": {
+        "role": "neutral",
+        "displayName": "Toile gris perle (sombre)",
+        "canonical": "oklch(0.165 0.012 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.012 265)",
+          "oklch(0.26 0.012 265)",
+          "oklch(0.37 0.012 265)",
+          "oklch(0.48 0.012 265)",
+          "oklch(0.6 0.012 265)",
+          "oklch(0.71 0.012 265)",
+          "oklch(0.83 0.012 265)",
+          "oklch(0.95 0.012 265)"
+        ]
+      },
+      "foreground-dark": {
+        "role": "neutral",
+        "displayName": "Encre de texte (sombre)",
+        "canonical": "oklch(0.955 0.005 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.005 265)",
+          "oklch(0.26 0.005 265)",
+          "oklch(0.37 0.005 265)",
+          "oklch(0.48 0.005 265)",
+          "oklch(0.6 0.005 265)",
+          "oklch(0.71 0.005 265)",
+          "oklch(0.83 0.005 265)",
+          "oklch(0.95 0.005 265)"
+        ]
+      },
+      "card-dark": {
+        "role": "neutral",
+        "displayName": "Carte (sombre)",
+        "canonical": "oklch(0.2 0.013 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.013 265)",
+          "oklch(0.26 0.013 265)",
+          "oklch(0.37 0.013 265)",
+          "oklch(0.48 0.013 265)",
+          "oklch(0.6 0.013 265)",
+          "oklch(0.71 0.013 265)",
+          "oklch(0.83 0.013 265)",
+          "oklch(0.95 0.013 265)"
+        ]
+      },
+      "popover-dark": {
+        "role": "neutral",
+        "displayName": "Couche (sombre)",
+        "canonical": "oklch(0.225 0.014 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.014 265)",
+          "oklch(0.26 0.014 265)",
+          "oklch(0.37 0.014 265)",
+          "oklch(0.48 0.014 265)",
+          "oklch(0.6 0.014 265)",
+          "oklch(0.71 0.014 265)",
+          "oklch(0.83 0.014 265)",
+          "oklch(0.95 0.014 265)"
+        ]
+      },
+      "sidebar-dark": {
+        "role": "neutral",
+        "displayName": "Barre latérale (sombre)",
+        "canonical": "oklch(0.145 0.011 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.011 265)",
+          "oklch(0.26 0.011 265)",
+          "oklch(0.37 0.011 265)",
+          "oklch(0.48 0.011 265)",
+          "oklch(0.6 0.011 265)",
+          "oklch(0.71 0.011 265)",
+          "oklch(0.83 0.011 265)",
+          "oklch(0.95 0.011 265)"
+        ]
+      },
+      "primary-dark": {
+        "role": "primary",
+        "displayName": "Indigo d'action (sombre)",
+        "canonical": "oklch(0.56 0.19 274)",
+        "tonalRamp": [
+          "oklch(0.15 0.19 274)",
+          "oklch(0.26 0.19 274)",
+          "oklch(0.37 0.19 274)",
+          "oklch(0.48 0.19 274)",
+          "oklch(0.6 0.19 274)",
+          "oklch(0.71 0.19 274)",
+          "oklch(0.83 0.19 274)",
+          "oklch(0.95 0.19 274)"
+        ]
+      },
+      "primary-text-dark": {
+        "role": "primary",
+        "displayName": "Indigo de texte (sombre)",
+        "canonical": "oklch(0.78 0.12 274)",
+        "tonalRamp": [
+          "oklch(0.15 0.12 274)",
+          "oklch(0.26 0.12 274)",
+          "oklch(0.37 0.12 274)",
+          "oklch(0.48 0.12 274)",
+          "oklch(0.6 0.12 274)",
+          "oklch(0.71 0.12 274)",
+          "oklch(0.83 0.12 274)",
+          "oklch(0.95 0.12 274)"
+        ]
+      },
+      "primary-soft-dark": {
+        "role": "primary",
+        "displayName": "Voile indigo (sombre)",
+        "canonical": "oklch(0.7 0.15 274 / 16%)",
+        "tonalRamp": [
+          "oklch(0.15 0.15 274)",
+          "oklch(0.26 0.15 274)",
+          "oklch(0.37 0.15 274)",
+          "oklch(0.48 0.15 274)",
+          "oklch(0.6 0.15 274)",
+          "oklch(0.71 0.15 274)",
+          "oklch(0.83 0.15 274)",
+          "oklch(0.95 0.15 274)"
+        ]
+      },
+      "secondary-dark": {
+        "role": "neutral",
+        "displayName": "Gris secondaire (sombre)",
+        "canonical": "oklch(0.25 0.013 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.013 265)",
+          "oklch(0.26 0.013 265)",
+          "oklch(0.37 0.013 265)",
+          "oklch(0.48 0.013 265)",
+          "oklch(0.6 0.013 265)",
+          "oklch(0.71 0.013 265)",
+          "oklch(0.83 0.013 265)",
+          "oklch(0.95 0.013 265)"
+        ]
+      },
+      "muted-dark": {
+        "role": "neutral",
+        "displayName": "Gris de remplissage (sombre)",
+        "canonical": "oklch(0.245 0.013 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.013 265)",
+          "oklch(0.26 0.013 265)",
+          "oklch(0.37 0.013 265)",
+          "oklch(0.48 0.013 265)",
+          "oklch(0.6 0.013 265)",
+          "oklch(0.71 0.013 265)",
+          "oklch(0.83 0.013 265)",
+          "oklch(0.95 0.013 265)"
+        ]
+      },
+      "muted-foreground-dark": {
+        "role": "neutral",
+        "displayName": "Texte atténué (sombre)",
+        "canonical": "oklch(0.71 0.016 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.016 265)",
+          "oklch(0.26 0.016 265)",
+          "oklch(0.37 0.016 265)",
+          "oklch(0.48 0.016 265)",
+          "oklch(0.6 0.016 265)",
+          "oklch(0.71 0.016 265)",
+          "oklch(0.83 0.016 265)",
+          "oklch(0.95 0.016 265)"
+        ]
+      },
+      "accent-dark": {
+        "role": "neutral",
+        "displayName": "Gris de survol (sombre)",
+        "canonical": "oklch(0.26 0.014 265)",
+        "tonalRamp": [
+          "oklch(0.15 0.014 265)",
+          "oklch(0.26 0.014 265)",
+          "oklch(0.37 0.014 265)",
+          "oklch(0.48 0.014 265)",
+          "oklch(0.6 0.014 265)",
+          "oklch(0.71 0.014 265)",
+          "oklch(0.83 0.014 265)",
+          "oklch(0.95 0.014 265)"
+        ]
+      },
+      "destructive-dark": {
+        "role": "tertiary",
+        "displayName": "Rouge d'erreur (sombre)",
+        "canonical": "oklch(0.66 0.19 25)",
+        "tonalRamp": [
+          "oklch(0.15 0.19 25)",
+          "oklch(0.26 0.19 25)",
+          "oklch(0.37 0.19 25)",
+          "oklch(0.48 0.19 25)",
+          "oklch(0.6 0.19 25)",
+          "oklch(0.71 0.19 25)",
+          "oklch(0.83 0.19 25)",
+          "oklch(0.95 0.19 25)"
+        ]
+      },
+      "danger-soft-dark": {
+        "role": "tertiary",
+        "displayName": "Voile rouge (sombre)",
+        "canonical": "oklch(0.66 0.19 25 / 16%)",
+        "tonalRamp": [
+          "oklch(0.15 0.19 25)",
+          "oklch(0.26 0.19 25)",
+          "oklch(0.37 0.19 25)",
+          "oklch(0.48 0.19 25)",
+          "oklch(0.6 0.19 25)",
+          "oklch(0.71 0.19 25)",
+          "oklch(0.83 0.19 25)",
+          "oklch(0.95 0.19 25)"
+        ]
+      },
+      "income-dark": {
+        "role": "secondary",
+        "displayName": "Vert des entrées (sombre)",
+        "canonical": "oklch(0.78 0.14 158)",
+        "tonalRamp": [
+          "oklch(0.15 0.14 158)",
+          "oklch(0.26 0.14 158)",
+          "oklch(0.37 0.14 158)",
+          "oklch(0.48 0.14 158)",
+          "oklch(0.6 0.14 158)",
+          "oklch(0.71 0.14 158)",
+          "oklch(0.83 0.14 158)",
+          "oklch(0.95 0.14 158)"
+        ]
+      },
+      "income-soft-dark": {
+        "role": "secondary",
+        "displayName": "Voile vert (sombre)",
+        "canonical": "oklch(0.78 0.14 158 / 14%)",
+        "tonalRamp": [
+          "oklch(0.15 0.14 158)",
+          "oklch(0.26 0.14 158)",
+          "oklch(0.37 0.14 158)",
+          "oklch(0.48 0.14 158)",
+          "oklch(0.6 0.14 158)",
+          "oklch(0.71 0.14 158)",
+          "oklch(0.83 0.14 158)",
+          "oklch(0.95 0.14 158)"
+        ]
+      },
+      "warning-dark": {
+        "role": "secondary",
+        "displayName": "Ambre à ranger (sombre)",
+        "canonical": "oklch(0.84 0.13 82)",
+        "tonalRamp": [
+          "oklch(0.15 0.13 82)",
+          "oklch(0.26 0.13 82)",
+          "oklch(0.37 0.13 82)",
+          "oklch(0.48 0.13 82)",
+          "oklch(0.6 0.13 82)",
+          "oklch(0.71 0.13 82)",
+          "oklch(0.83 0.13 82)",
+          "oklch(0.95 0.13 82)"
+        ]
+      },
+      "warning-soft-dark": {
+        "role": "secondary",
+        "displayName": "Voile ambre (sombre)",
+        "canonical": "oklch(0.84 0.13 82 / 13%)",
+        "tonalRamp": [
+          "oklch(0.15 0.13 82)",
+          "oklch(0.26 0.13 82)",
+          "oklch(0.37 0.13 82)",
+          "oklch(0.48 0.13 82)",
+          "oklch(0.6 0.13 82)",
+          "oklch(0.71 0.13 82)",
+          "oklch(0.83 0.13 82)",
+          "oklch(0.95 0.13 82)"
+        ]
+      },
+      "border-dark": {
+        "role": "neutral",
+        "displayName": "Filet (sombre)",
+        "canonical": "oklch(1 0 0 / 8%)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.6 0 0)",
+          "oklch(0.71 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "input-dark": {
+        "role": "neutral",
+        "displayName": "Filet de champ (sombre)",
+        "canonical": "oklch(1 0 0 / 13%)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.6 0 0)",
+          "oklch(0.71 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      },
+      "ring-dark": {
+        "role": "primary",
+        "displayName": "Anneau de focus (sombre)",
+        "canonical": "oklch(0.7 0.15 274)",
+        "tonalRamp": [
+          "oklch(0.15 0.15 274)",
+          "oklch(0.26 0.15 274)",
+          "oklch(0.37 0.15 274)",
+          "oklch(0.48 0.15 274)",
+          "oklch(0.6 0.15 274)",
+          "oklch(0.71 0.15 274)",
+          "oklch(0.83 0.15 274)",
+          "oklch(0.95 0.15 274)"
+        ]
+      },
+      "chart-1-dark": {
+        "role": "neutral",
+        "displayName": "Barres sorties (sombre)",
+        "canonical": "oklch(0.68 0.15 274)",
+        "tonalRamp": [
+          "oklch(0.15 0.15 274)",
+          "oklch(0.26 0.15 274)",
+          "oklch(0.37 0.15 274)",
+          "oklch(0.48 0.15 274)",
+          "oklch(0.6 0.15 274)",
+          "oklch(0.71 0.15 274)",
+          "oklch(0.83 0.15 274)",
+          "oklch(0.95 0.15 274)"
+        ]
+      },
+      "chart-2-dark": {
+        "role": "neutral",
+        "displayName": "Barres entrées (sombre)",
+        "canonical": "oklch(0.76 0.14 158)",
+        "tonalRamp": [
+          "oklch(0.15 0.14 158)",
+          "oklch(0.26 0.14 158)",
+          "oklch(0.37 0.14 158)",
+          "oklch(0.48 0.14 158)",
+          "oklch(0.6 0.14 158)",
+          "oklch(0.71 0.14 158)",
+          "oklch(0.83 0.14 158)",
+          "oklch(0.95 0.14 158)"
+        ]
+      },
+      "chart-grid-dark": {
+        "role": "neutral",
+        "displayName": "Grille de graphique (sombre)",
+        "canonical": "oklch(1 0 0 / 6%)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.26 0 0)",
+          "oklch(0.37 0 0)",
+          "oklch(0.48 0 0)",
+          "oklch(0.6 0 0)",
+          "oklch(0.71 0 0)",
+          "oklch(0.83 0 0)",
+          "oklch(0.95 0 0)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Chiffre principal",
+        "purpose": "Montant « Sorties » de la Vue d'ensemble ; 2.25rem sous 640 px ; centimes et € à 0.6em atténués."
+      },
+      "display-secondary": {
+        "displayName": "Chiffre secondaire",
+        "purpose": "Montant « Entrées » à côté du chiffre principal."
+      },
+      "headline": {
+        "displayName": "Titre de page",
+        "purpose": "Titre de chaque page (période sur la Vue d'ensemble)."
+      },
+      "title": {
+        "displayName": "Titre de carte",
+        "purpose": "Titres de cartes et nom de l'application."
+      },
+      "body": {
+        "displayName": "Corps",
+        "purpose": "Texte courant, cellules, navigation ; 16 px dans les champs sous 768 px."
+      },
+      "label": {
+        "displayName": "Étiquette",
+        "purpose": "En-têtes de colonnes, badges, variations, propositions de règle ; casse normale."
+      },
+      "nav-tab": {
+        "displayName": "Onglet",
+        "purpose": "Libellés courts de la barre d'onglets du téléphone."
+      }
+    },
+    "shadows": [
+      {
+        "name": "couche",
+        "value": "0 12px 32px -12px rgb(0 0 0 / 0.35)",
+        "purpose": "Popovers, sélecteur de catégorie, menus."
+      },
+      {
+        "name": "barre-flottante",
+        "value": "0 12px 32px -12px rgb(0 0 0 / 0.4)",
+        "purpose": "Barres d'action collantes (sélection groupée, import à enregistrer)."
+      },
+      {
+        "name": "info-bulle",
+        "value": "0 8px 24px -8px rgb(0 0 0 / 0.35)",
+        "purpose": "Info-bulles de graphiques et toasts."
+      },
+      {
+        "name": "segment-actif",
+        "value": "0 1px 2px rgb(0 0 0 / 0.12)",
+        "purpose": "Segment actif d'un contrôle segmenté ; 0.1 pour l'entrée active de la barre latérale. Un trait, pas une élévation."
+      }
+    ],
+    "motion": [
+      {
+        "name": "etat",
+        "value": "150ms",
+        "purpose": "Transitions de couleur, bordure et halo (boutons, champs, liens, lignes)."
+      },
+      {
+        "name": "apparition",
+        "value": "200ms",
+        "purpose": "Fondu avec glissé de 4 à 8 px ou zoom 95 % : couches, barres flottantes, propositions de règle."
+      },
+      {
+        "name": "graphiques",
+        "value": "none",
+        "purpose": "Aucune animation au chargement des graphiques (isAnimationActive={false})."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0.01ms",
+        "purpose": "Toutes les durées neutralisées sous prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Bouton principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Action principale d'une zone (Importer un relevé, Enregistrer).",
+      "html": "<button class=\"ds-btn-primary\"><svg viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z\"/><path d=\"M14 2v6h6\"/><path d=\"M12 18v-6\"/><path d=\"m9 15 3-3 3 3\"/></svg>Importer un relevé</button>",
+      "css": ".ds-btn-primary { display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 16px; border:0; border-radius:12px; background:var(--primary, oklch(0.52 0.19 274)); color:var(--primary-foreground, oklch(0.99 0 0)); font:500 14px/1 ui-sans-serif, system-ui, sans-serif; cursor:pointer; transition:background-color 150ms, box-shadow 150ms; } .ds-btn-primary:hover { background:color-mix(in oklch, var(--primary, oklch(0.52 0.19 274)) 88%, transparent); } .ds-btn-primary:active { background:color-mix(in oklch, var(--primary, oklch(0.52 0.19 274)) 80%, transparent); } .ds-btn-primary:focus-visible { outline:none; box-shadow:0 0 0 2px var(--background, oklch(0.982 0.003 265)), 0 0 0 4px var(--ring, oklch(0.6 0.17 274)); }"
+    },
+    {
+      "name": "Bouton outline",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Action secondaire.",
+      "html": "<button class=\"ds-btn-outline\">Exporter</button>",
+      "css": ".ds-btn-outline { height:36px; padding:0 16px; border:1px solid var(--input, oklch(0.87 0.01 265)); border-radius:12px; background:var(--card, oklch(1 0 0)); color:var(--foreground, oklch(0.21 0.018 265)); font:500 14px/1 ui-sans-serif, system-ui, sans-serif; cursor:pointer; transition:background-color 150ms; } .ds-btn-outline:hover { background:var(--accent, oklch(0.945 0.007 265)); } .ds-btn-outline:focus-visible { outline:none; box-shadow:0 0 0 2px var(--background, oklch(0.982 0.003 265)), 0 0 0 4px var(--ring, oklch(0.6 0.17 274)); }"
+    },
+    {
+      "name": "Bouton fantôme",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Action tertiaire (Tout effacer, Tout voir).",
+      "html": "<button class=\"ds-btn-ghost\">Tout effacer</button>",
+      "css": ".ds-btn-ghost { height:32px; padding:0 12px; border:0; border-radius:12px; background:transparent; color:var(--muted-foreground, oklch(0.49 0.02 265)); font:500 13px/1 ui-sans-serif, system-ui, sans-serif; cursor:pointer; transition:background-color 150ms, color 150ms; } .ds-btn-ghost:hover { background:var(--accent, oklch(0.945 0.007 265)); color:var(--foreground, oklch(0.21 0.018 265)); } .ds-btn-ghost:focus-visible { outline:none; box-shadow:0 0 0 2px var(--background, oklch(0.982 0.003 265)), 0 0 0 4px var(--ring, oklch(0.6 0.17 274)); }"
+    },
+    {
+      "name": "Champ",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Champ de saisie standard.",
+      "html": "<input class=\"ds-input\" placeholder=\"Rechercher un tiers\" />",
+      "css": ".ds-input { height:36px; width:260px; padding:4px 12px; border:1px solid var(--input, oklch(0.87 0.01 265)); border-radius:12px; background:var(--card, oklch(1 0 0)); color:var(--foreground, oklch(0.21 0.018 265)); font:400 14px/1.43 ui-sans-serif, system-ui, sans-serif; transition:border-color 150ms, box-shadow 150ms; } .ds-input::placeholder { color:var(--muted-foreground, oklch(0.49 0.02 265)); } .ds-input:hover { border-color:color-mix(in oklch, var(--muted-foreground, oklch(0.49 0.02 265)) 40%, transparent); } .ds-input:focus-visible { outline:none; border-color:var(--ring, oklch(0.6 0.17 274)); box-shadow:0 0 0 3px color-mix(in oklch, var(--ring, oklch(0.6 0.17 274)) 25%, transparent); }"
+    },
+    {
+      "name": "Navigation latérale",
+      "kind": "nav",
+      "refersTo": "sidebar-item",
+      "description": "Entrées de la barre latérale ; active sur fond carte ; compteur ambre pour À ranger.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item is-active\" href=\"#\">Vue d'ensemble</a><a class=\"ds-nav-item\" href=\"#\">À ranger<span class=\"ds-count\">13</span></a><a class=\"ds-nav-item\" href=\"#\">Opérations</a></nav>",
+      "css": ".ds-nav { display:flex; flex-direction:column; gap:2px; width:216px; padding:12px; background:var(--sidebar, oklch(0.962 0.005 265)); } .ds-nav-item { display:flex; align-items:center; height:36px; padding:0 10px; border-radius:12px; color:var(--muted-foreground, oklch(0.49 0.02 265)); font:400 14px/1 ui-sans-serif, system-ui, sans-serif; text-decoration:none; transition:background-color 150ms, color 150ms; } .ds-nav-item:hover { background:var(--accent, oklch(0.945 0.007 265)); color:var(--foreground, oklch(0.21 0.018 265)); } .ds-nav-item:focus-visible { outline:none; box-shadow:0 0 0 2px var(--ring, oklch(0.6 0.17 274)); } .ds-nav-item.is-active { background:var(--card, oklch(1 0 0)); color:var(--foreground, oklch(0.21 0.018 265)); font-weight:500; box-shadow:0 1px 2px rgb(0 0 0 / 0.1); } .ds-count { margin-left:auto; min-width:20px; padding:0 6px; border-radius:9999px; background:var(--warning-soft, oklch(0.75 0.15 80 / 18%)); color:var(--warning, oklch(0.55 0.13 66)); font:600 11px/20px ui-sans-serif, system-ui, sans-serif; text-align:center; font-variant-numeric:tabular-nums; }"
+    },
+    {
+      "name": "Badges sémantiques",
+      "kind": "chip",
+      "refersTo": "badge-income",
+      "description": "Badges voilés : entrée, à ranger, accent.",
+      "html": "<span class=\"ds-badge ds-badge-income\">Entrée</span> <span class=\"ds-badge ds-badge-warning\">À ranger</span> <span class=\"ds-badge ds-badge-accent\">Règle</span>",
+      "css": ".ds-badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:10px; font:500 12px/1.33 ui-sans-serif, system-ui, sans-serif; } .ds-badge-income { background:var(--income-soft, oklch(0.5 0.13 158 / 11%)); color:var(--income, oklch(0.5 0.13 158)); } .ds-badge-warning { background:var(--warning-soft, oklch(0.75 0.15 80 / 18%)); color:var(--warning, oklch(0.55 0.13 66)); } .ds-badge-accent { background:var(--primary-soft, oklch(0.52 0.19 274 / 10%)); color:var(--primary-text, oklch(0.5 0.19 274)); }"
+    },
+    {
+      "name": "Contrôle segmenté",
+      "kind": "custom",
+      "refersTo": "segmented-list",
+      "description": "Mois / Année / Tout / Dates.",
+      "html": "<div class=\"ds-seg\"><button class=\"ds-seg-item is-on\">Mois</button><button class=\"ds-seg-item\">Année</button><button class=\"ds-seg-item\">Tout</button><button class=\"ds-seg-item\">Dates</button></div>",
+      "css": ".ds-seg { display:inline-flex; height:36px; padding:4px; gap:2px; border-radius:12px; background:var(--muted, oklch(0.955 0.005 265)); } .ds-seg-item { padding:4px 12px; border:0; border-radius:10px; background:transparent; color:var(--muted-foreground, oklch(0.49 0.02 265)); font:500 14px/1 ui-sans-serif, system-ui, sans-serif; cursor:pointer; transition:background-color 150ms, color 150ms; } .ds-seg-item:hover { color:var(--foreground, oklch(0.21 0.018 265)); } .ds-seg-item:focus-visible { outline:none; box-shadow:0 0 0 2px var(--ring, oklch(0.6 0.17 274)); } .ds-seg-item.is-on { background:var(--card, oklch(1 0 0)); color:var(--foreground, oklch(0.21 0.018 265)); box-shadow:0 1px 2px rgb(0 0 0 / 0.12); }"
+    },
+    {
+      "name": "Panneau Entrées / Sorties",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Carte plate à filet ; chiffre principal, centimes en retrait, variation neutre.",
+      "html": "<section class=\"ds-card\"><p class=\"ds-fig-label\"><span class=\"ds-dot\"></span>Sorties</p><p class=\"ds-fig\">733<span class=\"ds-fig-rest\">,31 €</span></p><p class=\"ds-delta\"><b>↘ 54 %</b> vs 1 602,73 € du 1er au 15 septembre</p></section>",
+      "css": ".ds-card { width:320px; padding:24px; border:1px solid var(--border, oklch(0.91 0.007 265)); border-radius:16px; background:var(--card, oklch(1 0 0)); color:var(--foreground, oklch(0.21 0.018 265)); font-family:ui-sans-serif, system-ui, sans-serif; } .ds-fig-label { display:flex; align-items:center; gap:8px; margin:0; font-size:14px; color:var(--muted-foreground, oklch(0.49 0.02 265)); } .ds-dot { width:8px; height:8px; border-radius:9999px; background:var(--chart-1, oklch(0.58 0.16 274)); } .ds-fig { margin:4px 0 0; font-size:2.5rem; font-weight:600; line-height:1; letter-spacing:-0.025em; font-variant-numeric:tabular-nums; } .ds-fig-rest { font-size:0.6em; font-weight:500; color:var(--muted-foreground, oklch(0.49 0.02 265)); } .ds-delta { margin:8px 0 0; font-size:12px; color:var(--muted-foreground, oklch(0.49 0.02 265)); } .ds-delta b { font-weight:500; color:var(--foreground, oklch(0.21 0.018 265)); }"
+    },
+    {
+      "name": "Bandeau à ranger",
+      "kind": "custom",
+      "refersTo": "sort-banner",
+      "description": "Rappel ambre vers l'écran À ranger, visible seulement s'il reste des opérations sans catégorie.",
+      "html": "<a class=\"ds-banner\" href=\"#\"><span><b>13</b> opérations sans catégorie</span><span class=\"ds-banner-cta\">Ranger →</span></a>",
+      "css": ".ds-banner { display:flex; align-items:center; gap:12px; width:480px; padding:12px 16px; border-radius:16px; background:var(--warning-soft, oklch(0.75 0.15 80 / 18%)); color:var(--foreground, oklch(0.21 0.018 265)); font:400 14px/1.43 ui-sans-serif, system-ui, sans-serif; text-decoration:none; transition:background-color 150ms; } .ds-banner b { font-weight:600; font-variant-numeric:tabular-nums; } .ds-banner:hover { background:color-mix(in oklch, var(--warning-soft, oklch(0.75 0.15 80 / 18%)) 80%, transparent); } .ds-banner:focus-visible { outline:none; box-shadow:0 0 0 2px var(--ring, oklch(0.6 0.17 274)); } .ds-banner-cta { margin-left:auto; font-weight:500; color:var(--warning, oklch(0.55 0.13 66)); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Le relevé soigné",
+    "overview": "BudgetFlow applique le standard des applications fintech, au niveau de finition de Finary : les montants mènent, le chrome s'efface. Les fonds sont des neutres légèrement froids (teinte 265) : blanc et gris perle en clair, encre bleu-noir en sombre où chaque surface relevée gagne un cran de clarté. Les séparations sont des filets d'un pixel, les coins généreux (12 à 16 px), et un seul accent indigo porte les actions et la sélection.\n\nLa couleur a un sens avant d'avoir une fonction décorative : vert pour les entrées, ambre pour ce qui reste « à ranger », rouge pour les erreurs et les suppressions, indigo pour ce que l'on peut faire ou ce qui est choisi. Tout le reste est neutre, y compris les variations d'une période à l'autre. Les chiffres sont tabulaires partout ; un montant se lit comme sur un relevé bien composé, centimes et devise en retrait.\n\nL'interface est une interface d'usage, pas une vitrine : densité réglable des tableaux, pas d'animation d'entrée sur les graphiques, mouvements brefs (150 à 250 ms) réservés aux changements d'état et aux couches qui s'ouvrent. Thème Système, Clair ou Sombre au choix, appliqué avant l'hydratation pour éviter tout flash.",
+    "keyCharacteristics": [
+      "Neutres froids (teinte 265), un seul accent indigo (teinte 274).",
+      "Quatre couleurs sémantiques à sens unique : indigo, vert, ambre, rouge.",
+      "Filets d'un pixel, rayons 12 px (contrôles) et 16 px (panneaux).",
+      "Plat au repos ; l'ombre n'appartient qu'aux couches flottantes.",
+      "Chiffres tabulaires sur tout le corps de texte ; montants en fr-FR.",
+      "Deux thèmes à parité, chacun avec ses propres valeurs (pas d'inversion mécanique)."
+    ],
+    "rules": [
+      {
+        "name": "The Sens Unique Rule",
+        "body": "Chaque couleur sémantique a un seul sens : indigo = action ou sélection, vert = entrée d'argent, ambre = à ranger, rouge = erreur ou suppression. Une couleur qui sert à autre chose que son sens est un défaut.",
+        "section": "colors"
+      },
+      {
+        "name": "The Teintes Réservées Rule",
+        "body": "La palette des catégories exclut les teintes qui ont un sens : rouge (~25), ambre (60–100), vert (~158), indigo (260–290). Toute nouvelle teinte de catégorie reste hors de ces plages.",
+        "section": "colors"
+      },
+      {
+        "name": "The Variation Neutre Rule",
+        "body": "Une variation entre périodes (« ↗ 54 % vs 1 602,73 € ») s'affiche en `foreground` avec une flèche, jamais en vert ou en rouge : plus de sorties n'est pas une erreur, et plus d'entrées n'est pas une entrée.",
+        "section": "colors"
+      },
+      {
+        "name": "The Chiffres Tabulaires Rule",
+        "body": "`font-feature-settings: \"tnum\" 1` est posé sur le corps ; tout montant porte en plus l'utilitaire `num` (chiffres tabulaires, -0.01em). Les montants passent par `Intl` en fr-FR : espace fine des milliers, virgule décimale, signe moins typographique.",
+        "section": "typography"
+      },
+      {
+        "name": "The Casse Normale Rule",
+        "body": "Libellés, en-têtes et étiquettes restent en casse normale ; les capitales sont réservées aux sigles (CSV, JSON) et aux motifs de règle saisis tels quels.",
+        "section": "typography"
+      },
+      {
+        "name": "The Plat au Repos Rule",
+        "body": "Cartes, tableaux, champs et boutons n'ont aucune ombre. Une ombre signale une couche qui recouvre le contenu et peut se refermer.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do réserver l'indigo (`primary`, `primary-text`, `primary-soft`) aux actions et à la sélection.",
+      "Do afficher toute entrée d'argent en `income` et tout montant en `num`, formaté en fr-FR.",
+      "Do signaler ce qui reste à ranger en ambre (`warning`, `warning-soft`), avec un chemin direct vers « À ranger ».",
+      "Do garder les variations entre périodes en couleur de texte, avec une flèche et le montant de comparaison.",
+      "Do donner à chaque nouveau jeton une valeur claire et une valeur sombre réglées séparément, en oklch.",
+      "Do employer le vocabulaire Entrées / Sorties, « à ranger », « opérations », et une interface entièrement en français.",
+      "Do limiter les mouvements à 150–250 ms et désactiver l'animation de chargement des graphiques (`isAnimationActive={false}`).",
+      "Do placer le contenu dans 1200 px au plus, barre latérale de 15rem à partir de 1024 px, barre d'onglets en dessous."
+    ],
+    "donts": [
+      "Don't utiliser le rouge pour une sortie d'argent, une hausse de dépenses ou une variation : le rouge signifie erreur ou suppression.",
+      "Don't donner à une catégorie une teinte rouge, ambre, verte ou indigo.",
+      "Don't poser d'ombre sur une carte, un tableau, un champ ou un bouton au repos.",
+      "Don't introduire de notion de solde, de budget ou de plafond dans l'interface.",
+      "Don't aligner des cartes KPI identiques ni proposer de thèmes de couleur nommés : Système, Clair, Sombre suffisent.",
+      "Don't charger de police ou de ressource depuis un CDN."
+    ]
+  }
+}

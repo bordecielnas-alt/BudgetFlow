@@ -1,6 +1,6 @@
 // Sauvegarde périodique dans DATA_DIR/exports : un CSV des écritures (lisible
 // dans un tableur) et un instantané JSON complet (réglages, catégories, règles,
-// budgets, historique des imports), restaurable depuis Réglages → Sauvegardes.
+// historique des imports), restaurable depuis Réglages → Sauvegardes.
 import { promises as fs } from "node:fs";
 
 import { CSV_HEADER, toCsv } from "@/lib/csv";

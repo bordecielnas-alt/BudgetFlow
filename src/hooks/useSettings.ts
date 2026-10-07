@@ -3,8 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect } from "react";
 
 import { getSettings, saveSettings } from "@/lib/data.functions";
-import type { UserSettings } from "@/lib/budget-types";
-import { DEFAULT_CATEGORIES, DEFAULT_RULES } from "@/lib/categories";
+import { DEFAULT_ACCOUNT, type UserSettings } from "@/lib/budget-types";
+import { DEFAULT_CATEGORIES, DEFAULT_RULES, setCategoryOrder } from "@/lib/categories";
 import { applyTheme, DEFAULT_THEME } from "@/lib/themes";
 
 const FALLBACK: UserSettings = {
@@ -14,14 +14,13 @@ const FALLBACK: UserSettings = {
   date_format: "dd/MM/yyyy",
   ai_provider: "gemini",
   ai_model: "gemini-2.5-flash",
-  default_account: "",
+  default_account: DEFAULT_ACCOUNT,
   categories: DEFAULT_CATEGORIES,
   rules: DEFAULT_RULES,
   backup_enabled: true,
   backup_interval_hours: 24,
   backup_keep: 30,
   backup_last: null,
-  budgets: {},
   ai_price_in: null,
   ai_price_out: null,
 };
@@ -40,6 +39,7 @@ export function useSettings() {
   });
 
   const settings = query.data ?? FALLBACK;
+  setCategoryOrder(settings.categories);
 
   useEffect(() => {
     applyTheme(settings.theme, settings.density);

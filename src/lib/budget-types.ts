@@ -34,8 +34,6 @@ export type UserSettings = {
   backup_interval_hours: number;
   backup_keep: number;
   backup_last: string | null;
-  /** Plafond mensuel de dépenses par catégorie (montant positif). */
-  budgets: Record<string, number>;
   /** Tarif du modèle en USD par million de tokens (null : tarif indicatif intégré). */
   ai_price_in: number | null;
   ai_price_out: number | null;
@@ -122,11 +120,14 @@ export type ImportRun = {
   account: string;
   period_start: string | null;
   period_end: string | null;
-  /** Solde final imprimé sur le relevé : sert à reconstituer le solde du compte. */
+  /** Solde final imprimé sur le relevé (conservé pour l'historique des imports). */
   closing_balance?: number | null;
   rows_added: number;
   usage?: AiUsage | null;
 };
+
+/** Compte utilisé par défaut, renommable dans Réglages. */
+export const DEFAULT_ACCOUNT = "Compte 1";
 
 export const ENTRY_TYPES = ["Dépenses", "Recettes", "Transfert", "Épargne"] as const;
 

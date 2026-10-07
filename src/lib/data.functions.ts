@@ -27,31 +27,35 @@ export const listEntries = createServerFn({ method: "GET" }).handler(async () =>
   return [...state.entries].sort((a, b) => (a.entry_date < b.entry_date ? 1 : -1));
 });
 
-export const createEntry = createServerFn({ method: "POST" }).handler(async () => {
-  const { requireAdmin } = await import("@/lib/auth.server");
-  const { mutate, newId } = await import("@/lib/store.server");
-  await requireAdmin();
-  const now = new Date().toISOString();
-  return mutate((state) => {
-    const entry = {
-      id: newId(),
-      entry_type: "Dépenses",
-      entry_date: now.slice(0, 10),
-      payee: "",
-      amount: 0,
-      account: "",
-      description: "",
-      category: "",
-      source: "manual",
-      source_key: null,
-      locally_modified: true,
-      created_at: now,
-      updated_at: now,
-    };
-    state.entries.unshift(entry);
-    return entry;
+export const createEntry = createServerFn({ method: "POST" })
+  .validator((input) => entryPatch.parse(input ?? {}))
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/auth.server");
+    const { mutate, newId } = await import("@/lib/store.server");
+    await requireAdmin();
+    const now = new Date().toISOString();
+    return mutate((state) => {
+      const amount = data.amount ?? 0;
+      const entry = {
+        id: newId(),
+        entry_type: data.entry_type || (amount > 0 ? "Recettes" : "Dépenses"),
+        entry_date: data.entry_date || now.slice(0, 10),
+        payee: data.payee ?? "",
+        amount,
+        account: data.account?.trim() || state.settings.default_account,
+        description: data.description ?? "",
+        category: data.category ?? "",
+        source: "manual",
+        source_key: null,
+        locally_modified: true,
+        category_manual: Boolean(data.category),
+        created_at: now,
+        updated_at: now,
+      };
+      state.entries.unshift(entry);
+      return entry;
+    });
   });
-});
 
 export const updateEntry = createServerFn({ method: "POST" })
   .validator((input) => z.object({ id: z.string().min(1), patch: entryPatch }).parse(input))
@@ -69,6 +73,67 @@ export const updateEntry = createServerFn({ method: "POST" })
       // Une catégorie corrigée à la main sert d'exemple aux prochains imports.
       if (data.patch.category !== undefined) entry.category_manual = Boolean(data.patch.category);
       return { ok: true as const };
+    });
+  });
+
+/** Même modification sur plusieurs écritures (catégorie, compte…) en une écriture disque. */
+export const updateEntries = createServerFn({ method: "POST" })
+  .validator((input) =>
+    z.object({ ids: z.array(z.string().min(1)).min(1).max(10000), patch: entryPatch }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/auth.server");
+    const { mutate } = await import("@/lib/store.server");
+    await requireAdmin();
+    return mutate((state) => {
+      const ids = new Set(data.ids);
+      const now = new Date().toISOString();
+      let updated = 0;
+      for (const entry of state.entries) {
+        if (!ids.has(entry.id)) continue;
+        Object.assign(entry, data.patch, { locally_modified: true, updated_at: now });
+        if (data.patch.category !== undefined) entry.category_manual = Boolean(data.patch.category);
+        updated += 1;
+      }
+      return { updated };
+    });
+  });
+
+const storedEntry = z.object({
+  id: z.string().min(1).max(100),
+  entry_type: z.string().max(60),
+  entry_date: z.string().max(30),
+  payee: z.string().max(300),
+  amount: z.number().finite(),
+  account: z.string().max(120),
+  description: z.string().max(1000),
+  category: z.string().max(120),
+  source: z.string().max(40),
+  source_key: z.string().max(200).nullable(),
+  locally_modified: z.boolean(),
+  category_manual: z.boolean().optional(),
+  created_at: z.string().max(40),
+  updated_at: z.string().max(40),
+});
+
+/** Annule une suppression : les écritures reviennent telles quelles (même id). */
+export const restoreEntries = createServerFn({ method: "POST" })
+  .validator((input) => z.object({ entries: z.array(storedEntry).min(1).max(10000) }).parse(input))
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/auth.server");
+    const { mutate } = await import("@/lib/store.server");
+    await requireAdmin();
+    return mutate((state) => {
+      const known = new Set(state.entries.map((entry) => entry.id));
+      const back = data.entries
+        .filter((entry) => !known.has(entry.id))
+        .map(({ category_manual, ...entry }) => ({
+          ...entry,
+          category_manual: category_manual === true,
+        }));
+      state.entries.push(...back);
+      state.entries.sort((a, b) => (a.entry_date < b.entry_date ? 1 : -1));
+      return { restored: back.length };
     });
   });
 
@@ -131,7 +196,6 @@ export const saveSettings = createServerFn({ method: "POST" })
         backup_enabled: z.boolean().optional(),
         backup_interval_hours: z.number().min(1).max(720).optional(),
         backup_keep: z.number().min(1).max(500).optional(),
-        budgets: z.record(z.string().max(120), z.number().min(0).max(1e9)).optional(),
         ai_price_in: z.number().min(0).max(10_000).nullable().optional(),
         ai_price_out: z.number().min(0).max(10_000).nullable().optional(),
       })
@@ -187,22 +251,69 @@ export const restoreBackupFn = createServerFn({ method: "POST" })
     return restoreBackup(text);
   });
 
-/** Par compte : dernier solde imprimé sur un relevé importé, pour reconstituer le solde actuel. */
-export const getAccountAnchors = createServerFn({ method: "GET" }).handler(async () => {
-  const { requireAdmin } = await import("@/lib/auth.server");
-  const { getState } = await import("@/lib/store.server");
-  await requireAdmin();
-  const state = await getState();
-  const anchors: Record<string, { date: string; balance: number }> = {};
-  for (const run of state.imports) {
-    if (run.closing_balance == null || !run.period_end || !run.account) continue;
-    const current = anchors[run.account];
-    if (!current || run.period_end > current.date) {
-      anchors[run.account] = { date: run.period_end, balance: run.closing_balance };
-    }
-  }
-  return anchors;
-});
+/**
+ * Renomme une catégorie dans la liste, les règles et toutes les écritures. Si le
+ * nouveau nom existe déjà, les deux catégories sont fusionnées.
+ */
+export const renameCategory = createServerFn({ method: "POST" })
+  .validator((input) =>
+    z
+      .object({
+        from: z.string().trim().min(1).max(120),
+        to: z.string().trim().min(1, "Nom de catégorie vide").max(120),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/auth.server");
+    const { mutate } = await import("@/lib/store.server");
+    await requireAdmin();
+    return mutate((state) => {
+      const { settings } = state;
+      settings.categories = settings.categories.includes(data.to)
+        ? settings.categories.filter((name) => name !== data.from)
+        : settings.categories.map((name) => (name === data.from ? data.to : name));
+      for (const rule of settings.rules) {
+        if (rule.category === data.from) rule.category = data.to;
+      }
+      let renamed = 0;
+      for (const entry of state.entries) {
+        if (entry.category !== data.from) continue;
+        entry.category = data.to;
+        renamed += 1;
+      }
+      return { renamed };
+    });
+  });
+
+/** Renomme un compte sur toutes ses écritures, son historique d'import et le compte par défaut. */
+export const renameAccount = createServerFn({ method: "POST" })
+  .validator((input) =>
+    z
+      .object({
+        from: z.string().trim().min(1).max(120),
+        to: z.string().trim().min(1, "Nom de compte vide").max(120),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/auth.server");
+    const { mutate } = await import("@/lib/store.server");
+    await requireAdmin();
+    return mutate((state) => {
+      let renamed = 0;
+      for (const entry of state.entries) {
+        if (entry.account !== data.from) continue;
+        entry.account = data.to;
+        renamed += 1;
+      }
+      for (const run of state.imports) {
+        if (run.account === data.from) run.account = data.to;
+      }
+      if (state.settings.default_account === data.from) state.settings.default_account = data.to;
+      return { renamed };
+    });
+  });
 
 export const importRows = createServerFn({ method: "POST" })
   .validator((input) =>
@@ -252,6 +363,7 @@ export const importRows = createServerFn({ method: "POST" })
             continue;
           }
           Object.assign(current, row, {
+            account: row.account || state.settings.default_account,
             source: "csv",
             locally_modified: false,
             updated_at: now,
@@ -260,6 +372,7 @@ export const importRows = createServerFn({ method: "POST" })
         } else {
           state.entries.unshift({
             ...row,
+            account: row.account || state.settings.default_account,
             id: newId(),
             source: "csv",
             locally_modified: false,

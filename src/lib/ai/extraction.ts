@@ -87,7 +87,7 @@ Catégories déjà validées pour des émetteurs connus. Applique-les au même t
 ${examples.map(([payee, category]) => `- ${payee} → ${category}`).join("\n")}`
     : "";
   return `## Rôle
-Tu extrais les opérations d'un relevé de compte bancaire (PDF ou scan) ou d'une capture / photo d'une transaction, et tu les catégorises.
+Tu extrais les opérations d'un relevé de compte bancaire PDF (texte ou scanné) et tu les catégorises.
 
 ## Opérations (transactions)
 - Une entrée par opération du tableau des opérations, dans l'ordre du document, sur toutes les pages.
@@ -102,17 +102,12 @@ Tu extrais les opérations d'un relevé de compte bancaire (PDF ou scan) ou d'un
 ## Catégories autorisées
 ${categories.map((category) => `- ${category}`).join("\n")}
 
-Notes : « Santé » = médicaments, santé mentale, consultations médicales. « Voiture » = dépenses automobiles hors carburant. « Income » = salaires, revenus, intérêts, remboursements reçus.${history}
+Notes : « Santé » = médicaments, santé mentale, consultations médicales. « Voiture » = dépenses automobiles hors carburant. « Revenus » (ou « Income ») = salaires, revenus, intérêts, remboursements reçus.${history}
 
 ## Contrôles (statement)
-Renseigne, s'ils figurent sur le document : nom de la banque, période (AAAA-MM-JJ), solde précédent / initial (opening_balance), nouveau solde / solde final (closing_balance), total des débits et total des crédits (valeurs positives). Sinon, mets null.
-
-## Capture ou photo d'une transaction isolée
-Une seule opération ; montant négatif pour un achat ou un paiement. Les champs de contrôle sont alors null.`;
+Renseigne, s'ils figurent sur le document : nom de la banque, période (AAAA-MM-JJ), solde précédent / initial (opening_balance), nouveau solde / solde final (closing_balance), total des débits et total des crédits (valeurs positives). Sinon, mets null.`;
 }
 
-export function buildUserPrompt(fileName: string, note: string): string {
-  const parts = [`Fichier : ${fileName}. Extrais toutes les opérations selon les consignes.`];
-  if (note.trim()) parts.push(`Précision de l'utilisateur : ${note.trim()}`);
-  return parts.join("\n");
+export function buildUserPrompt(fileName: string): string {
+  return `Fichier : ${fileName}. Extrais toutes les opérations selon les consignes.`;
 }

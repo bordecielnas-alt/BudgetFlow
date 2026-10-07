@@ -45,8 +45,8 @@ const raw: RawExtraction = {
     total_credit: 2193.5,
   },
   transactions: [
-    tx("2023-11-17", "Virement A", 850, "Income"),
-    tx("2023-11-20", "Virement B", 28.5, "income"),
+    tx("2023-11-17", "Virement A", 850, "Revenus"),
+    tx("2023-11-20", "Virement B", 28.5, "revenus"),
     tx("2023-11-20", "HUBAN", -28.5, "Divertissement et sortie"),
     tx("2023-11-21", "Banque", -0.78, "", "Cotisation option Norplus"),
     tx("2023-11-21", "Banque", -1.55, "", "Cotisation option Norplus"),
@@ -54,21 +54,21 @@ const raw: RawExtraction = {
     tx("2023-11-21", "Banque", -8.05, "", "Cotisation Jazz Duo"),
     tx("2023-11-23", "PICARD", -89.12, "Alimentation"),
     tx("29/11/2023", "LIDL", -61.08, "Alimentation"),
-    tx("2023-11-30", "Virement C", 850, "Income"),
+    tx("2023-11-30", "Virement C", 850, "Revenus"),
     tx("2023-11-30", "PATISSERIE CUCCI", -8.75, "Alimentation"),
     tx("2023-11-30", "Vinted", -47.54, "Shopping"),
-    tx("2023-12-04", "Virement D", 465, "Income"),
+    tx("2023-12-04", "Virement D", 465, "Revenus"),
     tx("2023-12-05", "CHEZ UNCLE", -10.4, "Divertissement et sortie"),
     tx("2023-12-05", "SOGESSUR", -49.19, "Assurance"),
     tx("2023-12-05", "Kereis France", -25.23, "Crédit"),
     tx("2023-12-05", "Kereis France", -25.23, "Crédit"),
     tx("2023-12-05", "Échéance prêt", -990.76, "Maison"),
     tx("2023-12-06", "LIDL", -39.39, "Alimentation"),
-    tx("2023-12-06", "Engie", -205.6, "Energie"),
+    tx("2023-12-06", "Engie", -205.6, "Énergie"),
     tx("2023-12-07", "MATCH", -105.47, "Alimentation"),
     tx("2023-12-08", "CHRONOVET.FR", -57.88, "Animaux"),
-    tx("2023-12-11", "Service des eaux", -35.28, "Energie"),
-    tx("2023-12-14", "Orange SA", -44.99, "Phone & Telecom"),
+    tx("2023-12-11", "Service des eaux", -35.28, "Énergie"),
+    tx("2023-12-14", "Orange SA", -44.99, "Téléphone et internet"),
     tx("2023-12-15", "MARIE BLACHERE", -18.1, "Alimentation"),
   ],
 };
@@ -88,7 +88,7 @@ assert.equal(first[0]!.entry_type, "Recettes");
 assert.equal(first[2]!.entry_type, "Dépenses");
 
 // Catégories : règles prioritaires, casse corrigée, catégorie inconnue rejetée
-assert.equal(first[1]!.category, "Income", "casse canonique");
+assert.equal(first[1]!.category, "Revenus", "casse canonique");
 assert.equal(first[3]!.category, "Assurance", "règle Cotisation via le libellé");
 assert.equal(first[3]!.category_source, "rule");
 assert.equal(first[15]!.category, "Assurance", "règle Kereis l'emporte sur l'IA");
@@ -171,7 +171,7 @@ const memory = buildCategoryMemory(
     },
     { payee: "Lidl", category: "Maison", category_manual: true },
     { payee: "Kereis France", category: "Crédit", category_manual: true },
-    { payee: "Orange", category: "Phone & Telecom" }, // une seule occurrence non confirmée
+    { payee: "Orange", category: "Téléphone et internet" }, // une seule occurrence non confirmée
   ],
   DEFAULT_CATEGORIES,
 );
@@ -193,13 +193,13 @@ assert.equal(learned[0]!.ai_unsure, false);
 
 // Instantané : aller-retour, et refus d'un fichier étranger
 const snapshotState = {
-  settings: { ...context, budgets: { Alimentation: 400 } },
+  settings: { ...context, default_account: "Joint" },
   entries: [{ id: "a", entry_date: "2024-01-01", amount: -3 }],
   imports: [],
 } as unknown as AppState;
 const restored = parseSnapshot(JSON.stringify(makeSnapshot(snapshotState)));
 assert.equal(restored.entries.length, 1);
-assert.deepEqual(restored.settings.budgets, { Alimentation: 400 });
+assert.equal(restored.settings.default_account, "Joint");
 assert.throws(() => parseSnapshot('{"entries": []}'), /pas une sauvegarde/);
 assert.throws(() => parseSnapshot("pas du json"), /illisible/);
 

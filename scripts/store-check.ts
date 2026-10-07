@@ -34,14 +34,15 @@ const snapshot = {
   format: "budgetflow-snapshot",
   version: 1,
   exported_at: "2026-10-01T00:00:00Z",
-  settings: { budgets: { Alimentation: 300 } },
-  entries: [{ id: "a", entry_date: "2026-09-01", amount: -12.5, payee: "LIDL" }],
+  settings: { default_account: "" },
+  entries: [{ id: "a", entry_date: "2026-09-01", amount: -12.5, payee: "LIDL", account: "" }],
   imports: [],
 };
 writeFileSync(join(dir, "restore.json"), JSON.stringify(snapshot));
 const state = await store.getState();
 assert.equal(state.entries.length, 1);
-assert.deepEqual(state.settings.budgets, { Alimentation: 300 });
+assert.equal(state.settings.default_account, "Compte 1", "compte par défaut nommé");
+assert.equal(state.entries[0]!.account, "Compte 1", "écriture sans compte rattachée au compte par défaut");
 assert.equal(
   state.admin.must_change_password,
   true,

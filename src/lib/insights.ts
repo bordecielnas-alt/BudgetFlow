@@ -1,5 +1,5 @@
-// Analyses calculées côté navigateur à partir des écritures : budgets, comparaisons
-// de périodes, abonnements récurrents et soldes par compte.
+// Analyses calculées côté navigateur à partir des écritures : comparaisons de
+// périodes et abonnements récurrents.
 import { isIncome, type BudgetEntry } from "@/lib/budget-types";
 import { payeeSignature } from "@/lib/categories";
 
@@ -76,43 +76,6 @@ export function monthTotals(entries: Entry[], month: string): MonthTotals {
     byCategory.set(key, (byCategory.get(key) ?? 0) + Math.abs(entry.amount));
   }
   return { income, expense, byCategory };
-}
-
-// --- Budgets -------------------------------------------------------------------
-
-export type BudgetStatus = {
-  category: string;
-  limit: number;
-  spent: number;
-  ratio: number;
-  /** Dépense projetée en fin de mois au rythme actuel (mois en cours seulement). */
-  projected: number | null;
-};
-
-export function budgetStatus(
-  entries: Entry[],
-  budgets: Record<string, number>,
-  month: string,
-  today = new Date(),
-): BudgetStatus[] {
-  const totals = monthTotals(entries, month).byCategory;
-  const isCurrent = today.toISOString().slice(0, 7) === month;
-  const [year, value] = month.split("-").map(Number) as [number, number];
-  const length = new Date(Date.UTC(year, value, 0)).getUTCDate();
-  const elapsed = today.getUTCDate();
-  return Object.entries(budgets)
-    .filter(([, limit]) => limit > 0)
-    .map(([category, limit]) => {
-      const spent = totals.get(category) ?? 0;
-      return {
-        category,
-        limit,
-        spent,
-        ratio: spent / limit,
-        projected: isCurrent && elapsed < length ? (spent / elapsed) * length : null,
-      };
-    })
-    .sort((a, b) => b.ratio - a.ratio);
 }
 
 // --- Abonnements et prélèvements récurrents -----------------------------------
@@ -208,52 +171,4 @@ export function detectRecurring(entries: Entry[]): Recurring[] {
     });
   }
   return found.sort((a, b) => Number(b.active) - Number(a.active) || b.monthlyCost - a.monthlyCost);
-}
-
-// --- Comptes -------------------------------------------------------------------
-
-export type AccountSummary = {
-  account: string;
-  count: number;
-  lastDate: string;
-  /** Solde reconstitué depuis le dernier relevé importé, null sans relevé de référence. */
-  balance: number | null;
-  anchorDate: string | null;
-  monthFlow: number;
-};
-
-export function accountSummaries(
-  entries: Entry[],
-  anchors: Record<string, { date: string; balance: number }>,
-  month: string,
-): AccountSummary[] {
-  const byAccount = new Map<string, Entry[]>();
-  for (const entry of entries) {
-    const key = entry.account || "Sans compte";
-    byAccount.set(key, [...(byAccount.get(key) ?? []), entry]);
-  }
-  return [...byAccount.entries()]
-    .map(([account, list]) => {
-      const anchor = anchors[account];
-      const balance = anchor
-        ? anchor.balance +
-          list
-            .filter((entry) => entry.entry_date > anchor.date)
-            .reduce((sum, entry) => sum + signedAmount(entry), 0)
-        : null;
-      return {
-        account,
-        count: list.length,
-        lastDate: list.reduce(
-          (max, entry) => (entry.entry_date > max ? entry.entry_date : max),
-          "",
-        ),
-        balance,
-        anchorDate: anchor?.date ?? null,
-        monthFlow: list
-          .filter((entry) => entry.entry_date.startsWith(month))
-          .reduce((sum, entry) => sum + signedAmount(entry), 0),
-      };
-    })
-    .sort((a, b) => b.count - a.count);
 }

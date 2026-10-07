@@ -7,31 +7,32 @@ export type CategoryRule = {
   category: string;
 };
 
-// Reprise de la liste utilisée par le workflow N8N « BudgetConverter ».
+// Liste du workflow N8N « BudgetConverter », en français (nouvelles installations ;
+// une base existante garde ses noms, renommables dans Réglages → Catégories).
 export const DEFAULT_CATEGORIES = [
   "Alimentation",
   "Animaux",
   "Assurance",
   "Crédit",
   "Divertissement et sortie",
-  "Energie",
+  "Énergie",
   "Essence",
   "Maison",
-  "Phone & Telecom",
+  "Téléphone et internet",
   "Santé",
   "Travaux",
   "Vacances",
   "Voiture",
-  "Income",
+  "Revenus",
 ];
 
 // Règles « Category automatic » du prompt N8N, rendues déterministes.
 export const DEFAULT_RULES: CategoryRule[] = [
   { id: "default-kereis", pattern: "Kereis", category: "Assurance" },
-  { id: "default-engie", pattern: "Engie", category: "Energie" },
+  { id: "default-engie", pattern: "Engie", category: "Énergie" },
   { id: "default-cotisation", pattern: "Cotisation", category: "Assurance" },
   { id: "default-sogessur", pattern: "SOGESSUR", category: "Assurance" },
-  { id: "default-douaisis", pattern: "DOUAISIS ENVIRONNEMENT", category: "Energie" },
+  { id: "default-douaisis", pattern: "DOUAISIS ENVIRONNEMENT", category: "Énergie" },
   { id: "default-pret", pattern: "ECHEANCE PRET", category: "Crédit" },
 ];
 
@@ -44,11 +45,18 @@ export function normalizeText(value: string): string {
     .trim();
 }
 
+/** Texte comparable : sans accents ni casse, ponctuation ramenée à des espaces. */
+function loose(value: string): string {
+  return ` ${normalizeText(value)
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()} `;
+}
+
 /** Première règle dont le motif apparaît dans l'un des textes, sinon null. */
 export function matchRule(rules: CategoryRule[], ...texts: string[]): CategoryRule | null {
-  const haystack = normalizeText(texts.join(" "));
+  const haystack = loose(texts.join(" "));
   for (const rule of rules) {
-    const needle = normalizeText(rule.pattern);
+    const needle = loose(rule.pattern).trim();
     if (needle && haystack.includes(needle)) return rule;
   }
   return null;
@@ -132,12 +140,24 @@ export function similarPayees(a: string, b: string): boolean {
   return ca.includes(cb) || cb.includes(ca);
 }
 
-/** Motif de règle pour un émetteur : texte court, présent tel quel dans le libellé. */
+/**
+ * Motif de règle pour un émetteur : la première suite de mots qui nomme le tiers,
+ * sans moyen de paiement ni référence. « Livret A virement » → LIVRET A ;
+ * « CARTE X1234 PICARD SA 09/10 » → PICARD ; « Veto Saint-Roch » → VETO SAINT ROCH.
+ */
 export function suggestRulePattern(payee: string): string {
-  const signature = payeeSignature(payee);
-  if (signature && normalizeText(payee).includes(signature)) return signature.toUpperCase();
-  const longest = [...payeeTokens(payee)].sort((a, b) => b.length - a.length)[0];
-  return (longest ?? "").toUpperCase();
+  const words = loose(payee).trim().split(" ").filter(Boolean);
+  const isNoise = (word: string) => NOISE_WORDS.has(word) || /\d/.test(word);
+  let start = 0;
+  while (start < words.length && isNoise(words[start]!)) start += 1;
+  const picked: string[] = [];
+  for (const word of words.slice(start)) {
+    if (isNoise(word) || picked.length === 3) break;
+    picked.push(word);
+  }
+  // Un seul mot très court (« SG ») matcherait trop de libellés.
+  const pattern = picked.join(" ");
+  return pattern.replace(/\s/g, "").length >= 3 ? pattern.toUpperCase() : "";
 }
 
 // --- Mémoire de catégorisation (apprise sur l'historique) ---------------------
@@ -193,10 +213,46 @@ export function memoryExamples(memory: CategoryMemory, limit = 60): Array<[strin
     .map((hit) => [hit.label, hit.category]);
 }
 
+// Palette des catégories. Teintes autorisées seulement hors des couleurs qui ont
+// un sens : rouge (erreurs, ~25), ambre (« à ranger », 60–100), vert (entrées,
+// ~158) et indigo (accent, 260–290). Sept teintes, ordonnées pour que deux
+// voisines s'opposent, puis trois paliers de clarté : 21 couleurs distinctes.
+const CATEGORY_HUES = [190, 325, 122, 235, 350, 212, 302];
+const CATEGORY_TIERS = [
+  { l: 0.72, c: 0.13 },
+  { l: 0.56, c: 0.13 },
+  { l: 0.84, c: 0.08 },
+];
+
+let categoryOrder: string[] = [];
+// Catégories absentes des Réglages (anciennes données) : rangées à la suite, dans
+// l'ordre où on les rencontre, plutôt que par hachage (pas de collision).
+const extraOrder: string[] = [];
+
+/** Ordre des catégories des Réglages : deux voisines n'ont jamais la même couleur. */
+export function setCategoryOrder(categories: string[]) {
+  categoryOrder = categories;
+}
+
+const INCOME_NAMES = new Set(["revenus", "income", "salaire", "salaires"]);
+
 /** Couleur stable d'une catégorie, pour la repérer d'un coup d'œil. */
 export function categoryColor(category: string): string {
   if (!category) return "var(--muted-foreground)";
-  let hash = 0;
-  for (const char of category) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return `hsl(${hash % 360} 65% 52%)`;
+  if (INCOME_NAMES.has(normalizeText(category))) return "var(--income)";
+  let index = categoryOrder.indexOf(category);
+  if (index < 0) {
+    if (!extraOrder.includes(category)) extraOrder.push(category);
+    index = categoryOrder.length + extraOrder.indexOf(category);
+  }
+  const hue = CATEGORY_HUES[index % CATEGORY_HUES.length]!;
+  const tier = CATEGORY_TIERS[Math.floor(index / CATEGORY_HUES.length) % CATEGORY_TIERS.length]!;
+  return `oklch(${tier.l} ${tier.c} ${hue})`;
 }
+
+/** Noms hérités de l'ancienne application, proposés à la traduction. */
+export const LEGACY_CATEGORY_NAMES: Record<string, string> = {
+  Income: "Revenus",
+  "Phone & Telecom": "Téléphone et internet",
+  Energie: "Énergie",
+};

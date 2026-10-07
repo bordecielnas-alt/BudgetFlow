@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Landmark, Repeat, Scale } from "lucide-react";
+import { Repeat, Scale } from "lucide-react";
 
 import { CategoryDot } from "@/components/CategoryPicker";
+import { PageHeader } from "@/components/page";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -24,9 +23,7 @@ import {
 } from "@/components/ui/table";
 import { useEntries } from "@/hooks/useEntries";
 import { formatMoney, formatMonth, type BudgetEntry } from "@/lib/budget-types";
-import { getAccountAnchors } from "@/lib/data.functions";
 import {
-  accountSummaries,
   change,
   defaultMonth,
   detectRecurring,
@@ -41,7 +38,7 @@ export const Route = createFileRoute("/_authenticated/insights")({
       { title: "Analyse — BudgetFlow" },
       {
         name: "description",
-        content: "Comparaison mensuelle, abonnements récurrents et soldes par compte.",
+        content: "Comparaison mensuelle par catégorie et abonnements récurrents.",
       },
     ],
   }),
@@ -57,26 +54,24 @@ function InsightsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Analyse</h1>
-          <p className="text-sm text-muted-foreground">
-            Évolution par catégorie, abonnements et soldes de vos comptes.
-          </p>
-        </div>
-        <Select value={month} onValueChange={setPicked}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((value) => (
-              <SelectItem key={value} value={value}>
-                {formatMonth(value)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <PageHeader
+        title="Analyse"
+        description="Évolution par catégorie et abonnements récurrents."
+        actions={
+          <Select value={month} onValueChange={setPicked}>
+            <SelectTrigger className="w-40" aria-label="Mois analysé">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {formatMonth(value)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Chargement des données…</p>
@@ -88,7 +83,6 @@ function InsightsPage() {
         <>
           <Comparison entries={entries} month={month} />
           <Subscriptions entries={entries} />
-          <Accounts entries={entries} month={month} />
         </>
       )}
     </div>
@@ -111,7 +105,7 @@ function DeltaCell({
   const good = expense ? pct < -5 : pct > 5;
   return (
     <TableCell
-      className={`text-right text-xs ${bad ? "text-red-600" : good ? "text-emerald-600" : "text-muted-foreground"}`}
+      className={`text-right text-xs ${bad ? "text-destructive" : good ? "text-income" : "text-muted-foreground"}`}
       title={`${formatMoney(current - before)}`}
     >
       {pct > 0 ? "+" : ""}
@@ -161,7 +155,7 @@ function Comparison({ entries, month }: { entries: BudgetEntry[]; month: string 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle className="flex items-center gap-2">
           <Scale className="size-4" /> Comparaison mensuelle
         </CardTitle>
         <CardDescription>
@@ -201,7 +195,7 @@ function Subscriptions({ entries }: { entries: BudgetEntry[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle className="flex items-center gap-2">
           <Repeat className="size-4" /> Abonnements et prélèvements récurrents
         </CardTitle>
         <CardDescription>
@@ -248,14 +242,14 @@ function Subscriptions({ entries }: { entries: BudgetEntry[] }) {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{item.lastDate}</TableCell>
                   <TableCell className="space-x-1">
-                    {item.isNew && <Badge>Nouveau</Badge>}
+                    {item.isNew && <Badge variant="default">Nouveau</Badge>}
                     {item.priceChange !== null && (
                       <Badge
                         variant="outline"
                         className={
                           item.priceChange > 0
-                            ? "border-red-500/60 text-red-600"
-                            : "border-emerald-500/60 text-emerald-600"
+                            ? "border-transparent bg-danger-soft text-destructive"
+                            : "border-transparent bg-income-soft text-income"
                         }
                       >
                         {item.priceChange > 0 ? "Hausse" : "Baisse"}{" "}
@@ -272,56 +266,6 @@ function Subscriptions({ entries }: { entries: BudgetEntry[] }) {
           </Table>
         </CardContent>
       )}
-    </Card>
-  );
-}
-
-function Accounts({ entries, month }: { entries: BudgetEntry[]; month: string }) {
-  const loadAnchors = useServerFn(getAccountAnchors);
-  const anchors = useQuery({ queryKey: ["account-anchors"], queryFn: () => loadAnchors({}) });
-  const rows = useMemo(
-    () => accountSummaries(entries, anchors.data ?? {}, month),
-    [entries, anchors.data, month],
-  );
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Landmark className="size-4" /> Comptes
-        </CardTitle>
-        <CardDescription>
-          Solde reconstitué à partir du dernier relevé importé (son solde final) et des opérations
-          enregistrées depuis.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {rows.map((row) => (
-          <div key={row.account} className="rounded-lg border border-border p-4">
-            <p className="text-sm text-muted-foreground">{row.account}</p>
-            <p className="mt-1 text-2xl font-semibold">
-              {row.balance === null ? "—" : formatMoney(row.balance)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {row.anchorDate
-                ? `D'après le relevé arrêté au ${row.anchorDate}`
-                : "Solde inconnu : importez un relevé PDF de ce compte"}
-            </p>
-            <div className="mt-3 flex justify-between text-xs">
-              <span>
-                {formatMonth(month)} :{" "}
-                <span className={row.monthFlow >= 0 ? "text-emerald-600" : "text-red-600"}>
-                  {row.monthFlow > 0 ? "+" : ""}
-                  {formatMoney(row.monthFlow)}
-                </span>
-              </span>
-              <span className="text-muted-foreground">
-                {row.count} écritures · dernière {row.lastDate || "—"}
-              </span>
-            </div>
-          </div>
-        ))}
-      </CardContent>
     </Card>
   );
 }
