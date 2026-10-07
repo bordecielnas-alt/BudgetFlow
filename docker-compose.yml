@@ -1,0 +1,21 @@
+services:
+  app:
+    build:
+      context: .
+    restart: unless-stopped
+    ports:
+      # hôte:conteneur — l'app écoute sur 3000 dans le conteneur
+      - "3000:3000"
+    volumes:
+      # Données persistantes : base locale, config, exports, sauvegardes
+      - ./data:/data
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATA_DIR: /data
+      # Mot de passe admin initial (sinon : @Tracking@, à changer au premier login)
+      # ADMIN_PASSWORD: "changez-moi"
+      # Clés IA optionnelles (sinon : Réglages → IA)
+      # GEMINI_API_KEY: ""
+      # ANTHROPIC_API_KEY: ""
+      # OPENAI_API_KEY: ""
