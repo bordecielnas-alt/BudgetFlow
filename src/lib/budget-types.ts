@@ -14,6 +14,8 @@ export type BudgetEntry = {
   source: string;
   source_key: string | null;
   locally_modified: boolean;
+  /** Catégorie choisie par l'utilisateur (relecture d'import ou table Data). */
+  category_manual?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -32,6 +34,11 @@ export type UserSettings = {
   backup_interval_hours: number;
   backup_keep: number;
   backup_last: string | null;
+  /** Plafond mensuel de dépenses par catégorie (montant positif). */
+  budgets: Record<string, number>;
+  /** Tarif du modèle en USD par million de tokens (null : tarif indicatif intégré). */
+  ai_price_in: number | null;
+  ai_price_out: number | null;
 };
 
 export type SyncReport = {
@@ -60,6 +67,16 @@ export type BalanceCheck = {
   message: string;
 };
 
+/** D'où vient la catégorie proposée à la relecture. */
+export type CategorySource = "rule" | "history" | "ai" | "manual" | "none";
+
+/** Tokens consommés par une analyse et coût estimé (USD, null si tarif inconnu). */
+export type AiUsage = {
+  input_tokens: number;
+  output_tokens: number;
+  cost_usd: number | null;
+};
+
 export type ImportCandidate = {
   key: string;
   entry_type: string;
@@ -69,9 +86,21 @@ export type ImportCandidate = {
   amount: number;
   account: string;
   category: string;
-  category_source: "rule" | "ai" | "none";
-  /** Écriture existante ayant la même clé (même compte, date, montant et rang). */
-  duplicate_of: { payee: string; entry_date: string; amount: number } | null;
+  category_source: CategorySource;
+  /** Autre catégorie plausible (proposition de l'IA écartée par l'historique), sinon "". */
+  category_hint: string;
+  /** L'IA signale qu'elle hésite sur la catégorie. */
+  ai_unsure: boolean;
+  /**
+   * Écriture existante de même date et même montant. « certain » : même clé ou
+   * émetteur ressemblant ; « probable » : émetteur différent, à vérifier.
+   */
+  duplicate_of: {
+    payee: string;
+    entry_date: string;
+    amount: number;
+    confidence: "certain" | "probable";
+  } | null;
 };
 
 export type ImportPreview = {
@@ -81,6 +110,7 @@ export type ImportPreview = {
   statement: StatementInfo;
   check: BalanceCheck;
   candidates: ImportCandidate[];
+  usage: AiUsage | null;
 };
 
 export type ImportRun = {
@@ -92,7 +122,10 @@ export type ImportRun = {
   account: string;
   period_start: string | null;
   period_end: string | null;
+  /** Solde final imprimé sur le relevé : sert à reconstituer le solde du compte. */
+  closing_balance?: number | null;
   rows_added: number;
+  usage?: AiUsage | null;
 };
 
 export const ENTRY_TYPES = ["Dépenses", "Recettes", "Transfert", "Épargne"] as const;

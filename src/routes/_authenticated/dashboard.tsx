@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Bar,
@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { X } from "lucide-react";
+import { Target, TrendingDown, TrendingUp, X } from "lucide-react";
 
 import { ImportButton } from "@/components/ImportButton";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +36,9 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEntries } from "@/hooks/useEntries";
+import { useSettings } from "@/hooks/useSettings";
 import { formatMoney, formatMonth, isIncome, type BudgetEntry } from "@/lib/budget-types";
+import { budgetStatus, change, defaultMonth, monthsWithData, previousRange } from "@/lib/insights";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -106,8 +108,142 @@ function matches(
   });
 }
 
+function sumUp(list: BudgetEntry[]) {
+  let income = 0;
+  let expense = 0;
+  for (const entry of list) {
+    if (isIncome(entry)) income += Math.abs(entry.amount);
+    else expense += Math.abs(entry.amount);
+  }
+  return { income, expense, count: list.length };
+}
+
+/** Variation par rapport à la période précédente, en vert si elle va dans le bon sens. */
+function Delta({
+  current,
+  before,
+  higherIsGood,
+}: {
+  current: number;
+  before: number | undefined;
+  higherIsGood: boolean;
+}) {
+  if (before === undefined) return null;
+  const pct = change(current, before);
+  if (pct === null) {
+    return <span className="text-xs text-muted-foreground">Rien sur la période précédente</span>;
+  }
+  const good = pct === 0 || pct > 0 === higherIsGood;
+  const Icon = pct >= 0 ? TrendingUp : TrendingDown;
+  return (
+    <span
+      className={`flex items-center gap-1 text-xs ${good ? "text-emerald-600" : "text-red-600"}`}
+      title={`Période précédente : ${formatMoney(before)}`}
+    >
+      <Icon className="size-3.5" />
+      {pct > 0 ? "+" : ""}
+      {pct.toFixed(0)} % vs période précédente
+    </span>
+  );
+}
+
+function BudgetCard({
+  entries,
+  budgets,
+}: {
+  entries: BudgetEntry[];
+  budgets: Record<string, number>;
+}) {
+  const months = useMemo(() => monthsWithData(entries), [entries]);
+  const [month, setMonth] = useState<string | null>(null);
+  const shown = month ?? defaultMonth(entries);
+  const rows = useMemo(() => budgetStatus(entries, budgets, shown), [entries, budgets, shown]);
+
+  if (Object.keys(budgets).length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-3 py-4 text-sm text-muted-foreground">
+          <Target className="size-4" />
+          Fixez un budget mensuel par catégorie pour suivre vos dépenses ici.
+          <Button variant="outline" size="sm" asChild className="ml-auto">
+            <Link to="/settings">Définir des budgets</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const over = rows.filter((row) => row.ratio > 1).length;
+  const options = months.includes(shown) ? months : [shown, ...months];
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-center gap-3 space-y-0 pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Target className="size-4" /> Budgets
+        </CardTitle>
+        {over > 0 && (
+          <Badge variant="destructive">
+            {over} budget{over > 1 ? "s" : ""} dépassé{over > 1 ? "s" : ""}
+          </Badge>
+        )}
+        <Select value={shown} onValueChange={setMonth}>
+          <SelectTrigger className="ml-auto h-8 w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((value) => (
+              <SelectItem key={value} value={value}>
+                {formatMonth(value)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </CardHeader>
+      <CardContent className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+        {rows.map((row) => {
+          const tone =
+            row.ratio > 1 ? "bg-red-500" : row.ratio > 0.8 ? "bg-amber-500" : "bg-emerald-500";
+          const projectedOver =
+            row.projected !== null && row.projected > row.limit && row.ratio <= 1;
+          return (
+            <div key={row.category} className="space-y-1">
+              <div className="flex items-baseline justify-between gap-2 text-sm">
+                <span className="truncate font-medium">{row.category}</span>
+                <span className={row.ratio > 1 ? "text-red-600" : "text-muted-foreground"}>
+                  {formatMoney(row.spent)} / {formatMoney(row.limit)}
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className={`h-full rounded-full ${tone}`}
+                  style={{ width: `${Math.min(100, row.ratio * 100)}%` }}
+                />
+              </div>
+              {row.ratio > 1 ? (
+                <p className="text-xs text-red-600">
+                  Dépassé de {formatMoney(row.spent - row.limit)}
+                </p>
+              ) : projectedOver ? (
+                <p className="text-xs text-amber-600">
+                  À ce rythme : ≈ {formatMoney(row.projected!)} en fin de mois
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Reste {formatMoney(row.limit - row.spent)}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
 function DashboardPage() {
   const { data: entries = [], isLoading } = useEntries();
+  const { settings } = useSettings();
   const [filters, setFilters] = useState<Filters>({});
   const initialRange = useMemo(currentYearRange, []);
   const [from, setFrom] = useState(initialRange.from);
@@ -128,15 +264,21 @@ function DashboardPage() {
     [scoped, filters, granularity],
   );
 
-  const totals = useMemo(() => {
-    let income = 0;
-    let expense = 0;
-    for (const entry of filtered) {
-      if (isIncome(entry)) income += Math.abs(entry.amount);
-      else expense += Math.abs(entry.amount);
-    }
-    return { income, expense, count: filtered.length };
-  }, [filtered]);
+  const totals = useMemo(() => sumUp(filtered), [filtered]);
+
+  // Même durée juste avant, mêmes filtres (hors période cliquée) : base de comparaison.
+  const previous = useMemo(() => {
+    if (!from || !to || from > to) return null;
+    const range = previousRange(from, to);
+    return sumUp(
+      entries.filter(
+        (e) =>
+          e.entry_date >= range.from &&
+          e.entry_date <= range.to &&
+          matches(e, filters, granularity, "period"),
+      ),
+    );
+  }, [entries, from, to, filters, granularity]);
 
   const periods = useMemo(() => {
     const map = new Map<string, { period: string; recettes: number; depenses: number }>();
@@ -251,13 +393,25 @@ function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Recettes", value: totals.income },
-          { label: "Dépenses", value: totals.expense },
+          { label: "Recettes", value: totals.income, before: previous?.income, higherIsGood: true },
+          {
+            label: "Dépenses",
+            value: totals.expense,
+            before: previous?.expense,
+            higherIsGood: false,
+          },
+          {
+            label: "Solde",
+            value: totals.income - totals.expense,
+            before: previous ? previous.income - previous.expense : undefined,
+            higherIsGood: true,
+          },
         ].map((kpi) => (
           <Card key={kpi.label}>
             <CardHeader className="pb-2">
               <CardDescription>{kpi.label}</CardDescription>
               <CardTitle className="text-2xl">{formatMoney(kpi.value)}</CardTitle>
+              <Delta current={kpi.value} before={kpi.before} higherIsGood={kpi.higherIsGood} />
             </CardHeader>
           </Card>
         ))}
@@ -265,9 +419,14 @@ function DashboardPage() {
           <CardHeader className="pb-2">
             <CardDescription>Écritures</CardDescription>
             <CardTitle className="text-2xl">{totals.count}</CardTitle>
+            <span className="text-xs text-muted-foreground">
+              {previous ? `${previous.count} sur la période précédente` : ""}
+            </span>
           </CardHeader>
         </Card>
       </div>
+
+      <BudgetCard entries={entries} budgets={settings.budgets} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -407,7 +566,7 @@ function DashboardPage() {
       {isLoading && <p className="text-sm text-muted-foreground">Chargement des données…</p>}
       {!isLoading && entries.length === 0 && (
         <p className="text-sm text-muted-foreground">
-          Aucune donnée : lancez une MAJ, ou importez un CSV depuis l'onglet Data.
+          Aucune donnée : importez un relevé, ou un CSV depuis l'onglet Data.
         </p>
       )}
     </div>

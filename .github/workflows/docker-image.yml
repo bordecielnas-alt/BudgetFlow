@@ -13,7 +13,38 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/budgetflow
 
 jobs:
+  # Vérifications rapides : l'image n'est construite que si elles passent.
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2"
+
+      # Même version que l'image (node:22) : node:sqlite est requis par check:store.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Import pipeline check (offline, no AI call)
+        run: bun run check:import
+
+      - name: Storage check (corrupted database, restore)
+        run: bun run check:store
+
   build:
+    needs: checks
     runs-on: ubuntu-latest
 
     permissions:

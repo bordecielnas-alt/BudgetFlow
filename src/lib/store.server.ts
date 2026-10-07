@@ -18,6 +18,7 @@ export type StoredEntry = {
   source: string;
   source_key: string | null;
   locally_modified: boolean;
+  category_manual?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -29,7 +30,13 @@ export type AiKeys = Partial<Record<AiProvider, string>>;
 export type AppState = {
   version: number;
   sessionSecret: string;
-  admin: { email: string; salt: string; hash: string };
+  admin: {
+    email: string;
+    salt: string;
+    hash: string;
+    /** Mot de passe par défaut encore actif : changement exigé avant tout accès. */
+    must_change_password?: boolean;
+  };
   settings: StoredSettings;
   secrets: { ai_keys: AiKeys };
   entries: StoredEntry[];
@@ -37,7 +44,7 @@ export type AppState = {
 };
 
 export const DEFAULT_ADMIN_EMAIL = "admin@budget.local";
-const DEFAULT_ADMIN_PASSWORD = "@Tracking@";
+export const DEFAULT_ADMIN_PASSWORD = "@Tracking@";
 
 export const DEFAULT_SETTINGS: StoredSettings = {
   theme: "midnight",
@@ -53,6 +60,9 @@ export const DEFAULT_SETTINGS: StoredSettings = {
   backup_interval_hours: 24,
   backup_keep: 30,
   backup_last: null,
+  budgets: {},
+  ai_price_in: null,
+  ai_price_out: null,
 };
 
 function randomHex(bytes: number): string {
@@ -149,13 +159,15 @@ function getDriver(): Promise<Driver> {
 
 async function freshState(): Promise<AppState> {
   const salt = randomHex(16);
+  const envPassword = process.env["ADMIN_PASSWORD"];
   return {
     version: 1,
     sessionSecret: randomHex(32),
     admin: {
       email: process.env["ADMIN_EMAIL"] || DEFAULT_ADMIN_EMAIL,
       salt,
-      hash: await hashPassword(process.env["ADMIN_PASSWORD"] || DEFAULT_ADMIN_PASSWORD, salt),
+      hash: await hashPassword(envPassword || DEFAULT_ADMIN_PASSWORD, salt),
+      must_change_password: !envPassword,
     },
     settings: { ...DEFAULT_SETTINGS },
     secrets: { ai_keys: {} },
@@ -164,43 +176,185 @@ async function freshState(): Promise<AppState> {
   };
 }
 
+// --- Instantanés (sauvegarde complète hors secrets) ---------------------------
+
+export const SNAPSHOT_FORMAT = "budgetflow-snapshot";
+
+export type Snapshot = {
+  format: typeof SNAPSHOT_FORMAT;
+  version: 1;
+  exported_at: string;
+  settings: StoredSettings;
+  entries: StoredEntry[];
+  imports: ImportRun[];
+};
+
+/** Tout sauf le compte admin, le secret de session et les clés API. */
+export function makeSnapshot(state: AppState): Snapshot {
+  return {
+    format: SNAPSHOT_FORMAT,
+    version: 1,
+    exported_at: new Date().toISOString(),
+    settings: state.settings,
+    entries: state.entries,
+    imports: state.imports,
+  };
+}
+
+export function parseSnapshot(text: string): Snapshot {
+  let data: Partial<Snapshot>;
+  try {
+    data = JSON.parse(text) as Partial<Snapshot>;
+  } catch {
+    throw new Error("Fichier illisible : ce n'est pas du JSON valide.");
+  }
+  if (data.format !== SNAPSHOT_FORMAT || !Array.isArray(data.entries)) {
+    throw new Error("Ce fichier n'est pas une sauvegarde BudgetFlow (budget-*.json).");
+  }
+  const invalid = data.entries.findIndex(
+    (entry) =>
+      !entry ||
+      typeof entry.id !== "string" ||
+      typeof entry.entry_date !== "string" ||
+      typeof entry.amount !== "number",
+  );
+  if (invalid >= 0) throw new Error(`Sauvegarde invalide : écriture n°${invalid + 1} incomplète.`);
+  return {
+    format: SNAPSHOT_FORMAT,
+    version: 1,
+    exported_at: String(data.exported_at ?? ""),
+    settings: { ...DEFAULT_SETTINGS, ...(data.settings ?? {}) },
+    entries: data.entries,
+    imports: Array.isArray(data.imports) ? data.imports : [],
+  };
+}
+
+/** Remplace réglages, écritures et historique ; compte, session et clés API restent. */
+export function applySnapshot(state: AppState, snapshot: Snapshot): void {
+  state.settings = { ...snapshot.settings, backup_last: state.settings.backup_last };
+  state.entries = snapshot.entries;
+  state.imports = snapshot.imports;
+}
+
+// --- Chargement ---------------------------------------------------------------
+
 let cache: AppState | undefined;
+let loading: Promise<AppState> | undefined;
 let writeChain: Promise<unknown> = Promise.resolve();
+
+function stamp(): string {
+  return new Date().toISOString().replace(/[:.]/g, "-");
+}
+
+let quarantined: string | undefined;
+
+/** Met de côté (une seule fois) un contenu illisible : il ne doit jamais être écrasé. */
+async function quarantine(raw: string): Promise<string> {
+  if (!quarantined) {
+    const file = `${dataDir()}/budget.corrupt-${stamp()}.json`;
+    await fs.writeFile(file, raw, "utf8");
+    quarantined = file;
+  }
+  return quarantined;
+}
+
+/**
+ * Restauration hors interface : un fichier DATA_DIR/restore.json (sauvegarde
+ * budget-*.json) est appliqué au prochain chargement, puis renommé.
+ */
+async function takeRestoreFile(): Promise<Snapshot | null> {
+  const file = `${dataDir()}/restore.json`;
+  let text: string;
+  try {
+    text = await fs.readFile(file, "utf8");
+  } catch {
+    return null;
+  }
+  try {
+    const snapshot = parseSnapshot(text);
+    await fs.rename(file, `${dataDir()}/restore.done-${stamp()}.json`);
+    console.info(`[store] restauration depuis restore.json (${snapshot.entries.length} écritures)`);
+    return snapshot;
+  } catch (error) {
+    await fs.rename(file, `${dataDir()}/restore.invalid-${stamp()}.json`).catch(() => undefined);
+    console.error("[store] restore.json ignoré", error);
+    return null;
+  }
+}
+
+async function hydrate(parsed: AppState): Promise<{ state: AppState; changed: boolean }> {
+  const state: AppState = {
+    ...(await freshState()),
+    ...parsed,
+    settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}) },
+    secrets: { ai_keys: parsed.secrets?.ai_keys ?? {} },
+    entries: parsed.entries ?? [],
+    imports: parsed.imports ?? [],
+  };
+  let changed = false;
+  // Bases antérieures au drapeau : on vérifie une fois si le mot de passe par défaut est actif.
+  if (state.admin.must_change_password === undefined) {
+    const defaultHash = await hashPassword(DEFAULT_ADMIN_PASSWORD, state.admin.salt);
+    state.admin.must_change_password = defaultHash === state.admin.hash;
+    changed = true;
+  }
+  return { state, changed };
+}
+
+async function load(): Promise<AppState> {
+  const driver = await getDriver();
+  const restore = await takeRestoreFile();
+  const raw = await driver.read();
+
+  let state: AppState | undefined;
+  let changed = false;
+  if (raw) {
+    try {
+      ({ state, changed } = await hydrate(JSON.parse(raw) as AppState));
+    } catch {
+      const copy = await quarantine(raw);
+      if (!restore) {
+        throw new Error(
+          `Base de données illisible : rien n'a été écrasé (copie : ${copy}). Pour restaurer, ` +
+            `copiez une sauvegarde exports/budget-*.json en ${dataDir()}/restore.json puis rechargez la page.`,
+        );
+      }
+    }
+  }
+  if (!state) {
+    state = await freshState();
+    changed = true;
+  }
+  if (restore) {
+    applySnapshot(state, restore);
+    changed = true;
+  }
+  if (changed) await persist(state);
+  return state;
+}
 
 export async function getState(): Promise<AppState> {
   if (cache) return cache;
-  const driver = await getDriver();
-  const raw = await driver.read();
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw) as AppState;
-      cache = {
-        ...(await freshState()),
-        ...parsed,
-        settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}) },
-        secrets: { ai_keys: parsed.secrets?.ai_keys ?? {} },
-        entries: parsed.entries ?? [],
-        imports: parsed.imports ?? [],
-      };
-      return cache;
-    } catch {
-      // état corrompu : on repart d'un état neuf plutôt que de planter
-    }
-  }
-  cache = await freshState();
-  await persist(cache);
+  // Un seul chargement à la fois ; en cas d'échec, le suivant réessaie.
+  loading ??= load().finally(() => {
+    loading = undefined;
+  });
+  cache = await loading;
   return cache;
 }
 
 async function persist(state: AppState): Promise<void> {
   const driver = await getDriver();
   const payload = JSON.stringify(state);
-  writeChain = writeChain
-    .then(() => driver.write(payload))
-    .catch((error) => {
-      console.error("[store] écriture impossible", error);
-    });
-  await writeChain;
+  const run = writeChain.then(() => driver.write(payload));
+  // La file continue après un échec, mais l'appelant reçoit l'erreur.
+  writeChain = run.catch(() => undefined);
+  try {
+    await run;
+  } catch (error) {
+    console.error("[store] écriture impossible", error);
+    throw new Error("Enregistrement impossible sur le disque (voir les journaux du serveur).");
+  }
 }
 
 export async function mutate<T>(fn: (state: AppState) => T | Promise<T>): Promise<T> {

@@ -9,6 +9,7 @@ export const Route = createFileRoute("/_authenticated")({
   beforeLoad: async () => {
     const state = await getAuthState();
     if (!state.authenticated) throw redirect({ to: "/auth" });
+    if (state.mustChangePassword) throw redirect({ to: "/password" });
     return { email: state.email };
   },
   component: AuthenticatedLayout,

@@ -1,8 +1,17 @@
-// Sauvegarde périodique : export CSV horodaté dans DATA_DIR/exports.
+// Sauvegarde périodique dans DATA_DIR/exports : un CSV des écritures (lisible
+// dans un tableur) et un instantané JSON complet (réglages, catégories, règles,
+// budgets, historique des imports), restaurable depuis Réglages → Sauvegardes.
 import { promises as fs } from "node:fs";
 
 import { CSV_HEADER, toCsv } from "@/lib/csv";
-import { dataDir, getState, mutate } from "./store.server";
+import {
+  applySnapshot,
+  dataDir,
+  getState,
+  makeSnapshot,
+  mutate,
+  parseSnapshot,
+} from "./store.server";
 
 function exportsDir(): string {
   return `${dataDir()}/exports`;
@@ -15,7 +24,14 @@ function stamp(date: Date): string {
   )}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
 }
 
-export type BackupFile = { name: string; size: number; created_at: string };
+export type BackupFile = {
+  name: string;
+  kind: "csv" | "json";
+  size: number;
+  created_at: string;
+};
+
+const BACKUP_NAME = /^budget-[\w-]+\.(csv|json)$/;
 
 export async function listBackups(): Promise<BackupFile[]> {
   const dir = exportsDir();
@@ -23,10 +39,15 @@ export async function listBackups(): Promise<BackupFile[]> {
     const names = await fs.readdir(dir);
     const files = await Promise.all(
       names
-        .filter((name) => name.startsWith("budget-") && name.endsWith(".csv"))
+        .filter((name) => BACKUP_NAME.test(name))
         .map(async (name) => {
           const info = await fs.stat(`${dir}/${name}`);
-          return { name, size: info.size, created_at: info.mtime.toISOString() };
+          return {
+            name,
+            kind: name.endsWith(".json") ? ("json" as const) : ("csv" as const),
+            size: info.size,
+            created_at: info.mtime.toISOString(),
+          };
         }),
     );
     return files.sort((a, b) => b.name.localeCompare(a.name));
@@ -38,24 +59,45 @@ export async function listBackups(): Promise<BackupFile[]> {
 async function prune(keep: number): Promise<void> {
   if (keep <= 0) return;
   const files = await listBackups();
-  for (const file of files.slice(keep)) {
-    await fs.rm(`${exportsDir()}/${file.name}`).catch(() => undefined);
+  for (const kind of ["csv", "json"] as const) {
+    for (const file of files.filter((item) => item.kind === kind).slice(keep)) {
+      await fs.rm(`${exportsDir()}/${file.name}`).catch(() => undefined);
+    }
   }
 }
 
-export async function runBackup(): Promise<{ file: string; rows: number }> {
+export async function runBackup(label = ""): Promise<{ file: string; rows: number }> {
   const state = await getState();
   const dir = exportsDir();
   await fs.mkdir(dir, { recursive: true });
   const now = new Date();
-  const name = `budget-${stamp(now)}.csv`;
-  const body = state.entries.length ? toCsv(state.entries) : `${CSV_HEADER}\n`;
-  await fs.writeFile(`${dir}/${name}`, body, "utf8");
+  const base = `budget-${stamp(now)}${label ? `-${label}` : ""}`;
+  const csv = state.entries.length ? toCsv(state.entries) : `${CSV_HEADER}\n`;
+  await fs.writeFile(`${dir}/${base}.csv`, csv, "utf8");
+  await fs.writeFile(`${dir}/${base}.json`, JSON.stringify(makeSnapshot(state)), "utf8");
   await prune(state.settings.backup_keep);
   await mutate((s) => {
     s.settings.backup_last = now.toISOString();
   });
-  return { file: name, rows: state.entries.length };
+  return { file: `${base}.json`, rows: state.entries.length };
+}
+
+/** Contenu d'une sauvegarde, par son nom (aucun chemin accepté). */
+export async function readBackup(name: string): Promise<string> {
+  if (!BACKUP_NAME.test(name)) throw new Error("Nom de sauvegarde invalide");
+  try {
+    return await fs.readFile(`${exportsDir()}/${name}`, "utf8");
+  } catch {
+    throw new Error("Sauvegarde introuvable");
+  }
+}
+
+/** Restaure un instantané JSON, après avoir sauvegardé l'état actuel. */
+export async function restoreBackup(text: string): Promise<{ rows: number; safety: string }> {
+  const snapshot = parseSnapshot(text);
+  const safety = await runBackup("avant-restauration");
+  await mutate((state) => applySnapshot(state, snapshot));
+  return { rows: snapshot.entries.length, safety: safety.file };
 }
 
 // Déclenchement paresseux : appelé depuis les lectures, sans planificateur externe.

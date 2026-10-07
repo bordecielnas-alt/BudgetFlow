@@ -22,7 +22,7 @@ export const getAiConfig = createServerFn({ method: "GET" }).handler(async () =>
 });
 
 export const saveAiConfig = createServerFn({ method: "POST" })
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         provider,
@@ -57,7 +57,7 @@ export const testAiConfig = createServerFn({ method: "POST" }).handler(async () 
 });
 
 export const analyzeStatement = createServerFn({ method: "POST" })
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         fileName: z.string().min(1).max(300),
@@ -76,18 +76,23 @@ export const analyzeStatement = createServerFn({ method: "POST" })
     const { buildSystemPrompt, buildUserPrompt } = await import("@/lib/ai/extraction");
     const { buildCandidates } = await import("@/lib/import.server");
     const { checkBalance } = await import("@/lib/balance");
+    const { buildCategoryMemory, memoryExamples } = await import("@/lib/categories");
+    const { resolvePrice, withCost } = await import("@/lib/ai/pricing");
     await requireAdmin();
 
     const state = await getState();
     const { ai_provider, ai_model, categories, rules } = state.settings;
-    const raw = await extractStatement({
+    // Habitudes apprises sur les écritures déjà enregistrées : montrées à l'IA en
+    // exemples, puis appliquées en priorité sur sa proposition.
+    const memory = buildCategoryMemory(state.entries, categories);
+    const { raw, tokens } = await extractStatement({
       provider: ai_provider,
       model: ai_model,
       apiKey: aiKeyFor(state, ai_provider),
       fileName: data.fileName,
       mimeType: data.mimeType,
       base64: data.base64,
-      system: buildSystemPrompt(categories),
+      system: buildSystemPrompt(categories, memoryExamples(memory)),
       user: buildUserPrompt(data.fileName, data.note),
     });
 
@@ -96,6 +101,7 @@ export const analyzeStatement = createServerFn({ method: "POST" })
       categories,
       rules,
       existing: state.entries,
+      memory,
     });
 
     return {
@@ -105,6 +111,7 @@ export const analyzeStatement = createServerFn({ method: "POST" })
       statement: raw.statement,
       check: checkBalance(raw.statement, candidates),
       candidates,
+      usage: tokens ? withCost(tokens, resolvePrice(ai_model, state.settings)) : null,
     };
   });
 
@@ -117,10 +124,20 @@ const importedRow = z.object({
   amount: z.number().finite(),
   account: z.string().max(120),
   category: z.string().max(120),
+  category_manual: z.boolean().optional(),
 });
 
+const usage = z
+  .object({
+    input_tokens: z.number().min(0),
+    output_tokens: z.number().min(0),
+    cost_usd: z.number().min(0).nullable(),
+  })
+  .nullable()
+  .optional();
+
 export const commitImport = createServerFn({ method: "POST" })
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         file_name: z.string().max(300),
@@ -129,6 +146,8 @@ export const commitImport = createServerFn({ method: "POST" })
         account: z.string().max(120),
         period_start: z.string().max(30).nullable(),
         period_end: z.string().max(30).nullable(),
+        closing_balance: z.number().finite().nullable().optional(),
+        usage,
         rows: z.array(importedRow).min(1).max(5000),
       })
       .parse(input),
@@ -157,6 +176,7 @@ export const commitImport = createServerFn({ method: "POST" })
           source: "ia",
           source_key,
           locally_modified: false,
+          category_manual: row.category_manual === true,
           created_at: now,
           updated_at: now,
         });
@@ -170,7 +190,9 @@ export const commitImport = createServerFn({ method: "POST" })
         account: data.account,
         period_start: data.period_start,
         period_end: data.period_end,
+        closing_balance: data.closing_balance ?? null,
         rows_added: data.rows.length,
+        usage: data.usage ?? null,
       });
       state.imports = state.imports.slice(0, 100);
       return { added: data.rows.length };

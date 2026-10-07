@@ -7,15 +7,31 @@ import type { RawExtraction } from "@/lib/ai/extraction";
 import { EXTRACTION_SCHEMA } from "@/lib/ai/extraction";
 import { toGeminiSchema } from "@/lib/ai/providers.server";
 import { checkBalance } from "@/lib/balance";
-import { DEFAULT_CATEGORIES, DEFAULT_RULES } from "@/lib/categories";
+import { withCost, knownPrice } from "@/lib/ai/pricing";
+import {
+  buildCategoryMemory,
+  DEFAULT_CATEGORIES,
+  DEFAULT_RULES,
+  payeeSignature,
+  similarPayees,
+} from "@/lib/categories";
+import { makeSnapshot, parseSnapshot, type AppState } from "@/lib/store.server";
 import { buildCandidates } from "@/lib/import.server";
 
-const tx = (date: string, payee: string, amount: number, category = "", description = "") => ({
+const tx = (
+  date: string,
+  payee: string,
+  amount: number,
+  category = "",
+  description = "",
+  category_unsure = false,
+) => ({
   date,
   payee,
   description,
   amount,
   category,
+  category_unsure,
 });
 
 const raw: RawExtraction = {
@@ -96,6 +112,7 @@ console.log("ligne manquante:", missing.message);
 // Réimport du même relevé : tout est reconnu, même avec des libellés différents
 const existing = first.map((row) => ({
   ...row,
+  source_key: row.key,
   payee: row.payee.toUpperCase() + " (autre libellé)",
 }));
 const again = buildCandidates(raw, { ...context, existing });
@@ -119,5 +136,78 @@ const gemini = JSON.stringify(toGeminiSchema(EXTRACTION_SCHEMA));
 assert.ok(!gemini.includes("additionalProperties"));
 assert.ok(gemini.includes('"type":"NUMBER","nullable":true'));
 assert.ok(!gemini.includes('"null"'));
+
+// Réimport : même clé → doublon certain
+assert.ok(again.every((row) => row.duplicate_of?.confidence === "certain"));
+
+// Même date et montant mais autre tiers, autre compte : doublon seulement probable
+const stranger = {
+  entry_date: "2023-11-23",
+  amount: -89.12,
+  payee: "Pharmacie du Centre",
+  account: "Livret",
+};
+const probable = buildCandidates(raw, { ...context, existing: [stranger] });
+assert.equal(probable[7]!.duplicate_of?.confidence, "probable", "émetteur différent");
+const similar = buildCandidates(raw, {
+  ...context,
+  existing: [{ ...stranger, payee: "CARTE X6035 23/11 PICARD SA 296" }],
+});
+assert.equal(similar[7]!.duplicate_of?.confidence, "certain", "même tiers, libellé différent");
+
+// Émetteurs : signature et ressemblance
+assert.equal(payeeSignature("CARTE X6035 22/11 PICARD SA 296"), "picard");
+assert.equal(payeeSignature("Picard"), "picard");
+assert.ok(similarPayees("MARIE BLACHERE", "Marie Blachère SAS"));
+assert.ok(!similarPayees("LIDL", "Orange SA"));
+
+// Mémoire : catégorie choisie à la main > IA ; règle > mémoire ; IA incertaine signalée
+const memory = buildCategoryMemory(
+  [
+    {
+      payee: "CARTE X1234 VINTED 12/11",
+      category: "Divertissement et sortie",
+      category_manual: true,
+    },
+    { payee: "Lidl", category: "Maison", category_manual: true },
+    { payee: "Kereis France", category: "Crédit", category_manual: true },
+    { payee: "Orange", category: "Phone & Telecom" }, // une seule occurrence non confirmée
+  ],
+  DEFAULT_CATEGORIES,
+);
+const learned = buildCandidates(
+  {
+    ...raw,
+    transactions: [...raw.transactions, tx("2023-12-16", "Inconnu SARL", -12, "", "", true)],
+  },
+  { ...context, memory },
+);
+assert.equal(learned[11]!.category, "Divertissement et sortie", "Vinted appris");
+assert.equal(learned[11]!.category_source, "history");
+assert.equal(learned[8]!.category, "Maison", "l'habitude prime sur l'IA");
+assert.equal(learned[8]!.category_hint, "Alimentation", "proposition IA gardée en indice");
+assert.equal(learned[15]!.category, "Assurance", "la règle prime sur l'habitude");
+assert.equal(learned[23]!.category_source, "ai", "une seule occurrence ne suffit pas");
+assert.equal(learned[25]!.ai_unsure, true, "IA incertaine");
+assert.equal(learned[0]!.ai_unsure, false);
+
+// Instantané : aller-retour, et refus d'un fichier étranger
+const snapshotState = {
+  settings: { ...context, budgets: { Alimentation: 400 } },
+  entries: [{ id: "a", entry_date: "2024-01-01", amount: -3 }],
+  imports: [],
+} as unknown as AppState;
+const restored = parseSnapshot(JSON.stringify(makeSnapshot(snapshotState)));
+assert.equal(restored.entries.length, 1);
+assert.deepEqual(restored.settings.budgets, { Alimentation: 400 });
+assert.throws(() => parseSnapshot('{"entries": []}'), /pas une sauvegarde/);
+assert.throws(() => parseSnapshot("pas du json"), /illisible/);
+
+// Coût : 1 M tokens en entrée + 1 M en sortie sur Opus 5.5 = 4 + 20 USD
+assert.equal(
+  withCost({ input_tokens: 1e6, output_tokens: 1e6 }, knownPrice("claude-opus-5-5")).cost_usd,
+  24,
+);
+assert.equal(withCost({ input_tokens: 10, output_tokens: 10 }, null).cost_usd, null);
 
 console.log("OK — pipeline d'import vérifié");

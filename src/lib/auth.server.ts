@@ -1,6 +1,6 @@
-import { getRequest, useSession } from "@tanstack/react-start/server";
+import { getRequest, getRequestIP, useSession } from "@tanstack/react-start/server";
 
-import { getState, hashPassword, mutate } from "./store.server";
+import { DEFAULT_ADMIN_PASSWORD, getState, hashPassword, mutate } from "./store.server";
 
 type SessionData = { admin?: boolean };
 
@@ -39,8 +39,63 @@ export async function isAuthenticated(): Promise<boolean> {
   }
 }
 
-export async function requireAdmin(): Promise<void> {
+/** Session ouverte, même si le mot de passe par défaut doit encore être changé. */
+export async function requireSession(): Promise<void> {
   if (!(await isAuthenticated())) throw new Error("Non authentifié");
+}
+
+export async function requireAdmin(): Promise<void> {
+  await requireSession();
+  const state = await getState();
+  if (state.admin.must_change_password) {
+    throw new Error("Changez d'abord le mot de passe par défaut.");
+  }
+}
+
+// --- Limitation des tentatives de connexion ----------------------------------
+// Par adresse IP, plus un compteur global (une IP via X-Forwarded-For peut être
+// falsifiée). Au-delà des essais gratuits, l'attente double à chaque échec.
+
+type Attempts = { failures: number; lockedUntil: number };
+const attempts = new Map<string, Attempts>();
+const LIMITS = { ip: 5, global: 20 } as const;
+const BASE_DELAY_MS = 30_000;
+const MAX_DELAY_MS = 15 * 60_000;
+
+function attemptKeys(): Array<[string, number]> {
+  let ip = "inconnue";
+  try {
+    ip = getRequestIP({ xForwardedFor: true }) ?? ip;
+  } catch {
+    // hors requête (tests) : seul le compteur global s'applique vraiment
+  }
+  return [
+    [`ip:${ip}`, LIMITS.ip],
+    ["global", LIMITS.global],
+  ];
+}
+
+/** Millisecondes à attendre avant le prochain essai (0 si autorisé). */
+export function loginWaitMs(): number {
+  const now = Date.now();
+  return Math.max(0, ...attemptKeys().map(([key]) => (attempts.get(key)?.lockedUntil ?? 0) - now));
+}
+
+export function recordLoginFailure(): void {
+  const now = Date.now();
+  for (const [key, free] of attemptKeys()) {
+    const slot = attempts.get(key) ?? { failures: 0, lockedUntil: 0 };
+    slot.failures += 1;
+    if (slot.failures >= free) {
+      const delay = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** (slot.failures - free));
+      slot.lockedUntil = now + delay;
+    }
+    attempts.set(key, slot);
+  }
+}
+
+export function recordLoginSuccess(): void {
+  for (const [key] of attemptKeys()) attempts.delete(key);
 }
 
 export async function verifyPassword(password: string): Promise<boolean> {
@@ -78,7 +133,12 @@ export async function signOut(): Promise<void> {
 export async function updatePassword(next: string): Promise<void> {
   await mutate(async (state) => {
     state.admin.hash = await hashPassword(next, state.admin.salt);
+    state.admin.must_change_password = false;
   });
+}
+
+export function isDefaultPassword(password: string): boolean {
+  return password === DEFAULT_ADMIN_PASSWORD;
 }
 
 export async function updateEmail(next: string): Promise<void> {

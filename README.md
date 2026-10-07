@@ -14,17 +14,42 @@ Successeur de *budgetbuddyhub* : même stack, même déploiement Docker, même d
 - **Contrôle de solde** : solde initial + opérations extraites = solde final (ou totaux
   débit / crédit). En cas d'écart, un bandeau signale qu'une ligne manque ou qu'un montant est faux.
   Le contrôle se recalcule à chaque correction.
-- **Anti-doublons** : une opération déjà en base (même date, même montant) est signalée
-  « Déjà présente » et décochée. On peut réimporter un relevé, ou deux relevés qui se
-  chevauchent, sans créer de doublons.
-- **Catégories fixes** (Réglages → Catégories) : l'IA doit choisir dans la liste.
-  **Règles automatiques** : « libellé contient Engie → Energie », prioritaires sur l'IA.
-  Liste et règles reprises du workflow N8N *BudgetConverter*.
+- **Anti-doublons** : une opération déjà en base, même date et même montant, avec le même
+  tiers (ou la même clé de relevé), est signalée « Déjà présente » et décochée. Si seul le
+  tiers diffère, elle est signalée « Doublon possible » mais reste cochée : deux achats
+  différents au même prix le même jour ne sont jamais perdus. On peut réimporter un relevé,
+  ou deux relevés qui se chevauchent, sans créer de doublons.
+- **Catégorisation intelligente**, par ordre de priorité :
+  1. **règles** (« libellé contient Engie → Energie ») ;
+  2. **habitudes** : la catégorie que vous donnez d'ordinaire à ce tiers, apprise sur vos
+     écritures (un choix fait à la main compte triple). « CARTE X6035 PICARD SA 296 » et
+     « Picard » sont reconnus comme le même tiers ;
+  3. **IA**, qui reçoit vos habitudes en exemples et signale quand elle hésite (« à vérifier »).
+     Quand une habitude écarte la proposition de l'IA, celle-ci reste affichée en indice.
+- **Catégorisation manuelle rapide** à l'import :
+  - sélecteur avec recherche au clavier et création d'une catégorie à la volée ;
+  - une catégorie choisie pour une ligne s'applique aux autres opérations du même tiers ;
+  - vue **Par émetteur** : une ligne par tiers ;
+  - filtre **À vérifier** : lignes sans catégorie, incertaines ou doublons possibles ;
+  - **règles suggérées** à partir de vos corrections, à créer en un clic.
+- **Catégories et budgets** (Réglages → Catégories) : l'IA choisit dans la liste. Un
+  **budget mensuel** par catégorie est facultatif ; le dashboard montre la consommation,
+  les dépassements et la projection en fin de mois.
+- **Analyse** :
+  - comparaison mensuelle par catégorie (mois précédent, même mois l'an dernier) ;
+  - détection des **abonnements** et prélèvements récurrents (nouveaux, hausses de prix,
+    arrêtés) ;
+  - **solde par compte**, reconstitué depuis le dernier relevé importé.
 - **Fournisseur d'IA au choix** (Réglages → IA) : Google Gemini (par défaut,
   `gemini-2.5-flash`), Anthropic Claude (`claude-opus-5-5`) ou OpenAI. Modèle modifiable,
-  bouton de test (gratuit : il vérifie seulement la clé et le modèle).
-- **Dashboard** avec filtrage croisé, **table Data** éditable, import / export CSV,
-  sauvegardes CSV périodiques, 11 thèmes.
+  bouton de test (gratuit : il vérifie seulement la clé et le modèle). Chaque import affiche
+  les tokens consommés et une **estimation du coût**, selon un tarif public indicatif ou le
+  vôtre.
+- **Dashboard** avec filtrage croisé et comparaison à la période précédente, **table Data**
+  éditable, import / export CSV, 11 thèmes.
+- **Sauvegardes** périodiques : un CSV des écritures et un JSON complet (écritures,
+  catégories, règles, budgets, réglages ; jamais les clés API ni le mot de passe), à
+  télécharger ou **restaurer** depuis Réglages → Sauvegardes.
 
 ## Confidentialité
 
@@ -48,7 +73,20 @@ L'app écoute sur le port 3000. Tout l'état est dans `./data` (SQLite `budget.d
 sauvegardes) et survit aux rebuilds. Sauvegarde : `tar czf backup-$(date +%F).tar.gz ./data`.
 
 Compte initial : `admin@budget.local` / `@Tracking@`, ou la valeur de `ADMIN_PASSWORD` au
-premier démarrage. Changez-le dans Réglages → Compte.
+premier démarrage. Tant que le mot de passe par défaut est actif, l'application exige son
+remplacement avant tout accès. Après 5 échecs de connexion, l'attente entre deux essais
+double à chaque nouvel échec (30 s, 1 min, 2 min… jusqu'à 15 min).
+
+### Sauvegarde et restauration
+
+Réglages → Sauvegardes : sauvegarde manuelle ou périodique dans `./data/exports`,
+téléchargement et restauration. Une restauration sauvegarde d'abord l'état actuel
+(`…-avant-restauration.json`).
+
+Si la base devient illisible, BudgetFlow **ne l'écrase pas** : il en met une copie de côté
+(`data/budget.corrupt-….json`) et affiche un message d'erreur. Pour repartir d'une sauvegarde
+sans l'interface, copiez un fichier `exports/budget-….json` en `data/restore.json`, puis
+rechargez la page : il est appliqué puis renommé en `restore.done-….json`.
 
 Variables optionnelles (voir `.env.example` et `docker-compose.yml`) : `PORT`, `DATA_DIR`,
 `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`.
@@ -78,9 +116,11 @@ importés ensuite sont comparés à ces lignes pour signaler les doublons.
 2. Le serveur appelle le fournisseur choisi avec un schéma JSON strict
    (`src/lib/ai/extraction.ts`) : période, soldes, totaux, puis pour chaque opération la date,
    l'émetteur, la description, le montant signé (débit négatif, crédit positif) et la catégorie.
-3. `src/lib/import.server.ts` normalise les lignes, applique les règles et calcule une clé
-   stable (compte + date + montant + rang), puis signale les doublons.
-4. Après relecture, seules les lignes cochées sont enregistrées (`source = ia`).
+   Les habitudes apprises (`src/lib/categories.ts`) sont jointes au prompt en exemples.
+3. `src/lib/import.server.ts` normalise les lignes, applique règles puis habitudes, calcule une
+   clé stable (compte + date + montant + rang) et signale les doublons (certains ou possibles).
+4. Après relecture, seules les lignes cochées sont enregistrées (`source = ia`) ; les
+   catégories choisies à la main sont marquées et pèsent davantage dans les habitudes.
 
 ## Développement
 
@@ -89,7 +129,11 @@ bun install
 bun run dev            # données locales dans ./data
 bun run typecheck
 bun run check:import   # vérification hors ligne du pipeline d'import
+bun run check:store    # base corrompue jamais écrasée, restauration par restore.json
 ```
+
+La CI (GitHub Actions) lance typecheck, `check:import` et `check:store` avant de construire
+l'image Docker.
 
 Stack : TanStack Start (React 19, SSR), TanStack Router / Query, Tailwind 4 + shadcn/ui,
 Recharts, SDK `@anthropic-ai/sdk` pour Claude, appels REST pour Gemini et OpenAI.

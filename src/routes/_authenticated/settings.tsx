@@ -1,22 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import {
   Bot,
   Check,
   Database,
+  Download,
   KeyRound,
   Loader2,
   Palette,
   Plus,
+  RotateCcw,
   Tags,
   Trash2,
+  Upload,
   User,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { CategoryDot } from "@/components/CategoryPicker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +48,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { changeLogin, changePassword, getAuthState } from "@/lib/auth.functions";
 import { Switch } from "@/components/ui/switch";
 import { useSettings } from "@/hooks/useSettings";
-import { backupNow, getBackups } from "@/lib/data.functions";
+import { knownPrice } from "@/lib/ai/pricing";
+import { backupNow, downloadBackup, getBackups, restoreBackupFn } from "@/lib/data.functions";
 import { AI_PROVIDERS, type AiProvider } from "@/lib/budget-types";
 import { getAiConfig, saveAiConfig, testAiConfig } from "@/lib/import.functions";
 import { THEMES } from "@/lib/themes";
@@ -381,6 +396,7 @@ function AiSection() {
             . Les relevés envoyés pour analyse transitent par ce fournisseur.
           </p>
         </div>
+        <PriceFields model={model} />
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={() => run("save")} disabled={busy !== null || !model.trim()}>
             {busy === "save" && <Loader2 className="mr-2 size-4 animate-spin" />} Enregistrer
@@ -402,6 +418,65 @@ function AiSection() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/** Tarif servant à estimer le coût de chaque import ; vide = tarif indicatif du modèle. */
+function PriceFields({ model }: { model: string }) {
+  const { settings, update } = useSettings();
+  const known = knownPrice(model);
+  const [input, setInput] = useState("");
+  const [output, setOutput] = useState("");
+
+  useEffect(() => {
+    setInput(settings.ai_price_in === null ? "" : String(settings.ai_price_in));
+    setOutput(settings.ai_price_out === null ? "" : String(settings.ai_price_out));
+  }, [settings.ai_price_in, settings.ai_price_out]);
+
+  function commit() {
+    const parse = (raw: string) => {
+      const value = Number(raw.replace(",", "."));
+      return raw.trim() && Number.isFinite(value) && value >= 0 ? value : null;
+    };
+    const ai_price_in = parse(input);
+    const ai_price_out = parse(output);
+    // Les deux ou aucun : un tarif à moitié rempli fausserait l'estimation.
+    const both = ai_price_in !== null && ai_price_out !== null;
+    update.mutate({
+      ai_price_in: both ? ai_price_in : null,
+      ai_price_out: both ? ai_price_out : null,
+    });
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>Tarif pour l'estimation du coût (USD par million de tokens)</Label>
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          aria-label="Tarif entrée"
+          inputMode="decimal"
+          className="w-36"
+          placeholder={known ? `entrée : ${known.input}` : "entrée"}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onBlur={commit}
+        />
+        <Input
+          aria-label="Tarif sortie"
+          inputMode="decimal"
+          className="w-36"
+          placeholder={known ? `sortie : ${known.output}` : "sortie"}
+          value={output}
+          onChange={(e) => setOutput(e.target.value)}
+          onBlur={commit}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {known
+          ? "Laissez vide pour utiliser le tarif public indiqué en grisé (indicatif)."
+          : "Tarif inconnu pour ce modèle : renseignez-le pour afficher le coût des imports."}
+      </p>
+    </div>
   );
 }
 
@@ -427,7 +502,20 @@ function CategoriesSection() {
   }
 
   function removeCategory(category: string) {
-    update.mutate({ categories: settings.categories.filter((item) => item !== category) });
+    const { [category]: _removed, ...budgets } = settings.budgets;
+    update.mutate({
+      categories: settings.categories.filter((item) => item !== category),
+      budgets,
+    });
+  }
+
+  function setBudget(category: string, raw: string) {
+    const value = Number(raw.replace(/\s/g, "").replace(",", "."));
+    const { [category]: _previous, ...budgets } = settings.budgets;
+    if (raw.trim() && Number.isFinite(value) && value > 0) {
+      budgets[category] = Math.round(value * 100) / 100;
+    }
+    update.mutate({ budgets });
   }
 
   function addRule(event: React.FormEvent) {
@@ -450,23 +538,31 @@ function CategoriesSection() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            L'IA choisit obligatoirement parmi cette liste (ou laisse vide si rien ne convient).
+            L'IA choisit obligatoirement parmi cette liste (ou laisse vide si rien ne convient). Le
+            budget mensuel est facultatif : le dashboard signale son dépassement.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <ul className="divide-y divide-border rounded-md border border-border">
             {settings.categories.map((category) => (
-              <Badge key={category} variant="secondary" className="gap-1 py-1 pl-3 pr-1 text-sm">
-                {category}
-                <button
-                  type="button"
+              <li key={category} className="flex items-center gap-3 px-3 py-1.5 text-sm">
+                <CategoryDot category={category} />
+                <span className="flex-1">{category}</span>
+                <BudgetInput
+                  value={settings.budgets[category]}
+                  onCommit={(raw) => setBudget(category, raw)}
+                  label={`Budget mensuel ${category}`}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
                   onClick={() => removeCategory(category)}
-                  className="rounded p-0.5 hover:bg-background"
                   aria-label={`Supprimer ${category}`}
                 >
-                  <X className="size-3" />
-                </button>
-              </Badge>
+                  <X className="size-4" />
+                </Button>
+              </li>
             ))}
-          </div>
+          </ul>
           <form className="flex gap-2" onSubmit={addCategory}>
             <Input
               placeholder="Nouvelle catégorie…"
@@ -568,12 +664,93 @@ function CategoriesSection() {
   );
 }
 
+/** Montant libre (virgule acceptée), enregistré à la sortie du champ. */
+function BudgetInput({
+  value,
+  onCommit,
+  label,
+}: {
+  value: number | undefined;
+  onCommit: (raw: string) => void;
+  label: string;
+}) {
+  const [draft, setDraft] = useState(value ? String(value) : "");
+  useEffect(() => setDraft(value ? String(value) : ""), [value]);
+  return (
+    <div className="flex items-center gap-1">
+      <Input
+        aria-label={label}
+        inputMode="decimal"
+        placeholder="Budget / mois"
+        className="h-8 w-32 text-right"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (draft !== (value ? String(value) : "")) onCommit(draft);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+        }}
+      />
+      <span className="text-xs text-muted-foreground">€</span>
+    </div>
+  );
+}
+
 function BackupSection() {
   const { settings, update } = useSettings();
   const runBackup = useServerFn(backupNow);
   const loadBackups = useServerFn(getBackups);
   const backups = useQuery({ queryKey: ["backups"], queryFn: () => loadBackups({}) });
+  const fetchBackup = useServerFn(downloadBackup);
+  const runRestore = useServerFn(restoreBackupFn);
+  const queryClient = useQueryClient();
+  const uploadInput = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  // Restauration en attente de confirmation : sauvegarde du serveur ou fichier choisi.
+  const [pendingRestore, setPendingRestore] = useState<
+    { name: string } | { text: string; label: string } | null
+  >(null);
+
+  async function download(name: string) {
+    try {
+      const { text } = await fetchBackup({ data: { name } });
+      const type = name.endsWith(".json") ? "application/json" : "text/csv";
+      const url = URL.createObjectURL(new Blob([text], { type }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = name;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  }
+
+  async function pickFile(file: File | undefined) {
+    if (uploadInput.current) uploadInput.current.value = "";
+    if (!file) return;
+    setPendingRestore({ text: await file.text(), label: file.name });
+  }
+
+  async function confirmRestore() {
+    if (!pendingRestore) return;
+    setBusy(true);
+    try {
+      const data =
+        "name" in pendingRestore ? { name: pendingRestore.name } : { text: pendingRestore.text };
+      const result = await runRestore({ data });
+      toast.success(
+        `Restauration terminée : ${result.rows} écriture(s). L'état précédent est conservé dans ${result.safety}.`,
+      );
+      await queryClient.invalidateQueries();
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setBusy(false);
+      setPendingRestore(null);
+    }
+  }
 
   async function now() {
     setBusy(true);
@@ -645,18 +822,85 @@ function BackupSection() {
             </Badge>
           )}
         </div>
+        <p className="text-xs text-muted-foreground">
+          Chaque sauvegarde produit un CSV des écritures (pour un tableur) et un fichier JSON
+          complet : écritures, catégories, règles, budgets et réglages. Les clés API et le mot de
+          passe n'y figurent jamais.
+        </p>
         {backups.data?.files?.length ? (
-          <ul className="space-y-1 text-sm text-muted-foreground">
-            {backups.data.files.slice(0, 5).map((file) => (
-              <li key={file.name}>
-                {file.name} — {(file.size / 1024).toFixed(1)} Ko
+          <ul className="divide-y divide-border rounded-md border border-border text-sm">
+            {backups.data.files.slice(0, 10).map((file) => (
+              <li key={file.name} className="flex flex-wrap items-center gap-2 px-3 py-1.5">
+                <Badge variant="outline" className="w-12 justify-center uppercase">
+                  {file.kind}
+                </Badge>
+                <span className="flex-1 truncate font-mono text-xs">{file.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {(file.size / 1024).toFixed(1)} Ko
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => download(file.name)}
+                  aria-label={`Télécharger ${file.name}`}
+                >
+                  <Download className="size-4" />
+                </Button>
+                {file.kind === "json" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => setPendingRestore({ name: file.name })}
+                  >
+                    <RotateCcw className="mr-1.5 size-4" /> Restaurer
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">Aucune sauvegarde pour le moment.</p>
         )}
+        <div>
+          <Button variant="outline" onClick={() => uploadInput.current?.click()} disabled={busy}>
+            <Upload className="mr-2 size-4" /> Restaurer depuis un fichier…
+          </Button>
+          <input
+            ref={uploadInput}
+            type="file"
+            accept=".json,application/json"
+            className="hidden"
+            onChange={(event) => void pickFile(event.target.files?.[0])}
+          />
+        </div>
       </CardContent>
+
+      <AlertDialog
+        open={pendingRestore !== null}
+        onOpenChange={(open) => !open && setPendingRestore(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restaurer cette sauvegarde ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Les écritures, catégories, règles, budgets et réglages actuels seront remplacés par
+              ceux de{" "}
+              <strong>
+                {pendingRestore &&
+                  ("name" in pendingRestore ? pendingRestore.name : pendingRestore.label)}
+              </strong>
+              . Une sauvegarde de l'état actuel est faite juste avant ; le compte et les clés API ne
+              changent pas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void confirmRestore()}>Restaurer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

@@ -5,9 +5,13 @@ import { normalizeRows, parsePayload } from "@/lib/csv";
 
 const entryPatch = z.object({
   entry_type: z.string().max(60).optional(),
-  entry_date: z.string().max(30).optional(),
+  entry_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide (AAAA-MM-JJ attendu)")
+    .refine((value) => !Number.isNaN(Date.parse(`${value}T00:00:00Z`)), "Date inexistante")
+    .optional(),
   payee: z.string().max(300).optional(),
-  amount: z.number().optional(),
+  amount: z.number().finite().optional(),
   account: z.string().max(120).optional(),
   description: z.string().max(1000).optional(),
   category: z.string().max(120).optional(),
@@ -50,7 +54,7 @@ export const createEntry = createServerFn({ method: "POST" }).handler(async () =
 });
 
 export const updateEntry = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ id: z.string().min(1), patch: entryPatch }).parse(input))
+  .validator((input) => z.object({ id: z.string().min(1), patch: entryPatch }).parse(input))
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("@/lib/auth.server");
     const { mutate } = await import("@/lib/store.server");
@@ -62,12 +66,14 @@ export const updateEntry = createServerFn({ method: "POST" })
         locally_modified: true,
         updated_at: new Date().toISOString(),
       });
+      // Une catégorie corrigée à la main sert d'exemple aux prochains imports.
+      if (data.patch.category !== undefined) entry.category_manual = Boolean(data.patch.category);
       return { ok: true as const };
     });
   });
 
 export const deleteEntry = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ id: z.string().min(1) }).parse(input))
+  .validator((input) => z.object({ id: z.string().min(1) }).parse(input))
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("@/lib/auth.server");
     const { mutate } = await import("@/lib/store.server");
@@ -79,7 +85,7 @@ export const deleteEntry = createServerFn({ method: "POST" })
   });
 
 export const deleteEntries = createServerFn({ method: "POST" })
-  .inputValidator((input) =>
+  .validator((input) =>
     z.object({ ids: z.array(z.string().min(1)).min(1).max(10000) }).parse(input),
   )
   .handler(async ({ data }) => {
@@ -103,7 +109,7 @@ export const getSettings = createServerFn({ method: "GET" }).handler(async () =>
 });
 
 export const saveSettings = createServerFn({ method: "POST" })
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         theme: z.string().max(40).optional(),
@@ -125,6 +131,9 @@ export const saveSettings = createServerFn({ method: "POST" })
         backup_enabled: z.boolean().optional(),
         backup_interval_hours: z.number().min(1).max(720).optional(),
         backup_keep: z.number().min(1).max(500).optional(),
+        budgets: z.record(z.string().max(120), z.number().min(0).max(1e9)).optional(),
+        ai_price_in: z.number().min(0).max(10_000).nullable().optional(),
+        ai_price_out: z.number().min(0).max(10_000).nullable().optional(),
       })
       .parse(input),
   )
@@ -154,8 +163,49 @@ export const getBackups = createServerFn({ method: "GET" }).handler(async () => 
   return { files: await listBackups(), last: state.settings.backup_last };
 });
 
+const backupName = z.object({ name: z.string().min(1).max(200) });
+
+export const downloadBackup = createServerFn({ method: "POST" })
+  .validator((input) => backupName.parse(input))
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/auth.server");
+    const { readBackup } = await import("@/lib/backup.server");
+    await requireAdmin();
+    return { name: data.name, text: await readBackup(data.name) };
+  });
+
+/** Restaure une sauvegarde JSON du serveur (name) ou envoyée depuis le navigateur (text). */
+export const restoreBackupFn = createServerFn({ method: "POST" })
+  .validator((input) =>
+    z.union([backupName, z.object({ text: z.string().min(2).max(50_000_000) })]).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { requireAdmin } = await import("@/lib/auth.server");
+    const { readBackup, restoreBackup } = await import("@/lib/backup.server");
+    await requireAdmin();
+    const text = "name" in data ? await readBackup(data.name) : data.text;
+    return restoreBackup(text);
+  });
+
+/** Par compte : dernier solde imprimé sur un relevé importé, pour reconstituer le solde actuel. */
+export const getAccountAnchors = createServerFn({ method: "GET" }).handler(async () => {
+  const { requireAdmin } = await import("@/lib/auth.server");
+  const { getState } = await import("@/lib/store.server");
+  await requireAdmin();
+  const state = await getState();
+  const anchors: Record<string, { date: string; balance: number }> = {};
+  for (const run of state.imports) {
+    if (run.closing_balance == null || !run.period_end || !run.account) continue;
+    const current = anchors[run.account];
+    if (!current || run.period_end > current.date) {
+      anchors[run.account] = { date: run.period_end, balance: run.closing_balance };
+    }
+  }
+  return anchors;
+});
+
 export const importRows = createServerFn({ method: "POST" })
-  .inputValidator((input) =>
+  .validator((input) =>
     z
       .object({
         text: z.string().min(1).max(5_000_000),

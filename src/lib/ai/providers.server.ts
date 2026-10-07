@@ -17,7 +17,11 @@ export type ExtractionRequest = {
 
 export const SUPPORTED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
-export async function extractStatement(request: ExtractionRequest): Promise<RawExtraction> {
+export type TokenCount = { input_tokens: number; output_tokens: number };
+
+export async function extractStatement(
+  request: ExtractionRequest,
+): Promise<{ raw: RawExtraction; tokens: TokenCount | null }> {
   if (!request.apiKey) {
     throw new Error("Aucune clé API configurée pour ce fournisseur (Réglages → IA).");
   }
@@ -26,14 +30,16 @@ export async function extractStatement(request: ExtractionRequest): Promise<RawE
       `Format non pris en charge : ${request.mimeType || "inconnu"} (PDF, JPEG, PNG ou WebP).`,
     );
   }
-  const text =
+  const { text, tokens } =
     request.provider === "anthropic"
       ? await callAnthropic(request)
       : request.provider === "openai"
         ? await callOpenAi(request)
         : await callGemini(request);
-  return parseExtraction(text);
+  return { raw: parseExtraction(text), tokens };
 }
+
+type CallResult = { text: string; tokens: TokenCount | null };
 
 /** Vérifie la clé et l'existence du modèle via l'API des modèles (aucun coût). */
 export async function checkProvider(
@@ -76,7 +82,7 @@ const CLAUDE_CURRENT = [
   "claude-sonnet-5-5",
 ];
 
-async function callAnthropic(request: ExtractionRequest): Promise<string> {
+async function callAnthropic(request: ExtractionRequest): Promise<CallResult> {
   const client = new Anthropic({ apiKey: request.apiKey });
   const current = CLAUDE_CURRENT.includes(request.model);
   const source =
@@ -118,7 +124,17 @@ async function callAnthropic(request: ExtractionRequest): Promise<string> {
         "Réponse tronquée : le document est trop long, découpez-le en plusieurs fichiers.",
       );
     }
-    return message.content.map((block) => (block.type === "text" ? block.text : "")).join("");
+    const { usage } = message;
+    return {
+      text: message.content.map((block) => (block.type === "text" ? block.text : "")).join(""),
+      tokens: {
+        input_tokens:
+          usage.input_tokens +
+          (usage.cache_creation_input_tokens ?? 0) +
+          (usage.cache_read_input_tokens ?? 0),
+        output_tokens: usage.output_tokens,
+      },
+    };
   } catch (error) {
     throw new Error(describeAnthropicError(error));
   }
@@ -167,7 +183,7 @@ export function toGeminiSchema(schema: unknown): unknown {
   return out;
 }
 
-async function callGemini(request: ExtractionRequest): Promise<string> {
+async function callGemini(request: ExtractionRequest): Promise<CallResult> {
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel(request.model))}:generateContent`,
     {
@@ -198,6 +214,11 @@ async function callGemini(request: ExtractionRequest): Promise<string> {
   const data = (await response.json()) as {
     promptFeedback?: { blockReason?: string };
     candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{ text?: string }> } }>;
+    usageMetadata?: {
+      promptTokenCount?: number;
+      candidatesTokenCount?: number;
+      thoughtsTokenCount?: number;
+    };
   };
   if (data.promptFeedback?.blockReason) {
     throw new Error(`Gemini a bloqué la requête (${data.promptFeedback.blockReason}).`);
@@ -213,12 +234,22 @@ async function callGemini(request: ExtractionRequest): Promise<string> {
     throw new Error(
       `Gemini n'a renvoyé aucun contenu (${candidate?.finishReason ?? "raison inconnue"}).`,
     );
-  return text;
+  const usage = data.usageMetadata;
+  return {
+    text,
+    tokens: usage
+      ? {
+          input_tokens: usage.promptTokenCount ?? 0,
+          // La réflexion est facturée au tarif de sortie.
+          output_tokens: (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0),
+        }
+      : null,
+  };
 }
 
 // --- OpenAI (REST, API Responses) --------------------------------------------
 
-async function callOpenAi(request: ExtractionRequest): Promise<string> {
+async function callOpenAi(request: ExtractionRequest): Promise<CallResult> {
   const dataUrl = `data:${request.mimeType};base64,${request.base64}`;
   const file =
     request.mimeType === "application/pdf"
@@ -251,6 +282,7 @@ async function callOpenAi(request: ExtractionRequest): Promise<string> {
       type: string;
       content?: Array<{ type: string; text?: string; refusal?: string }>;
     }>;
+    usage?: { input_tokens?: number; output_tokens?: number };
   };
   if (data.status === "incomplete") {
     throw new Error(
@@ -262,7 +294,15 @@ async function callOpenAi(request: ExtractionRequest): Promise<string> {
   );
   const refusal = parts.find((part) => part.type === "refusal");
   if (refusal) throw new Error(`OpenAI a refusé d'analyser ce document : ${refusal.refusal ?? ""}`);
-  return parts.map((part) => (part.type === "output_text" ? (part.text ?? "") : "")).join("");
+  return {
+    text: parts.map((part) => (part.type === "output_text" ? (part.text ?? "") : "")).join(""),
+    tokens: data.usage
+      ? {
+          input_tokens: data.usage.input_tokens ?? 0,
+          output_tokens: data.usage.output_tokens ?? 0,
+        }
+      : null,
+  };
 }
 
 // --- Commun ------------------------------------------------------------------

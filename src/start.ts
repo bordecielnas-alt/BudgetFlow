@@ -1,4 +1,4 @@
-import { createStart, createMiddleware } from "@tanstack/react-start";
+import { createCsrfMiddleware, createMiddleware, createStart } from "@tanstack/react-start";
 import { renderErrorPage } from "./lib/error-page";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
@@ -16,6 +16,12 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   }
 });
 
+// Les server functions sont des points d'entrée POST authentifiés par cookie :
+// on refuse celles qui viennent d'un autre site (en-tête Sec-Fetch-Site / Origin).
+const csrfMiddleware = createCsrfMiddleware({
+  filter: (ctx) => ctx.handlerType === "serverFn",
+});
+
 //
 // SQLite-backed cookie session (see src/lib/auth.server.ts). Supabase n'est
 // pas utilisé par cette app — on n'enregistre donc PAS attachSupabaseAuth,
@@ -23,5 +29,5 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 // quand les VITE_SUPABASE_* ne sont pas définis, ce qui casse toutes les
 // serverFn (signIn, me, signOut, …).
 export const startInstance = createStart(() => ({
-  requestMiddleware: [errorMiddleware],
+  requestMiddleware: [csrfMiddleware, errorMiddleware],
 }));

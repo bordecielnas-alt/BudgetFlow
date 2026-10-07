@@ -21,6 +21,9 @@ const FALLBACK: UserSettings = {
   backup_interval_hours: 24,
   backup_keep: 30,
   backup_last: null,
+  budgets: {},
+  ai_price_in: null,
+  ai_price_out: null,
 };
 
 export function useSettings() {

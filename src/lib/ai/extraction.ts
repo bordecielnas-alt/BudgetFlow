@@ -17,6 +17,8 @@ export type RawTransaction = {
   description: string;
   amount: number;
   category: string;
+  /** Absent des anciennes réponses : traité comme false. */
+  category_unsure?: boolean;
 };
 
 export type RawExtraction = {
@@ -61,20 +63,29 @@ export const EXTRACTION_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["date", "payee", "description", "amount", "category"],
+        required: ["date", "payee", "description", "amount", "category", "category_unsure"],
         properties: {
           date: { type: "string" },
           payee: { type: "string" },
           description: { type: "string" },
           amount: { type: "number" },
           category: { type: "string" },
+          category_unsure: { type: "boolean" },
         },
       },
     },
   },
 } as const;
 
-export function buildSystemPrompt(categories: string[]): string {
+export function buildSystemPrompt(
+  categories: string[],
+  examples: Array<[string, string]> = [],
+): string {
+  const history = examples.length
+    ? `\n\n## Habitudes de l'utilisateur
+Catégories déjà validées pour des émetteurs connus. Applique-les au même tiers, même si le libellé varie un peu :
+${examples.map(([payee, category]) => `- ${payee} → ${category}`).join("\n")}`
+    : "";
   return `## Rôle
 Tu extrais les opérations d'un relevé de compte bancaire (PDF ou scan) ou d'une capture / photo d'une transaction, et tu les catégorises.
 
@@ -86,11 +97,12 @@ Tu extrais les opérations d'un relevé de compte bancaire (PDF ou scan) ou d'un
 - payee : le tiers, court et lisible (marchand, organisme, émetteur ou bénéficiaire d'un virement). Exemples : « CARTE X6035 22/11 PICARD SA 296 » → « PICARD » ; prélèvement « DE: Engie » → « Engie » ; « ECHEANCE PRET N°823… » → « Échéance prêt ».
 - description : courte description en français (80 caractères maximum) de la nature de l'opération, en reprenant le motif utile (ex. « Paiement carte », « Prélèvement – abonnement fibre », « Virement reçu – remboursement prêt maison »). N'y recopie pas les références, numéros de mandat ou identifiants.
 - category : exactement une catégorie de la liste ci-dessous, ou une chaîne vide si aucune ne convient.
+- category_unsure : true si le tiers est ambigu ou inconnu et que la catégorie est une supposition (ou vide) ; false si elle est évidente.
 
 ## Catégories autorisées
 ${categories.map((category) => `- ${category}`).join("\n")}
 
-Notes : « Santé » = médicaments, santé mentale, consultations médicales. « Voiture » = dépenses automobiles hors carburant. « Income » = salaires, revenus, intérêts, remboursements reçus.
+Notes : « Santé » = médicaments, santé mentale, consultations médicales. « Voiture » = dépenses automobiles hors carburant. « Income » = salaires, revenus, intérêts, remboursements reçus.${history}
 
 ## Contrôles (statement)
 Renseigne, s'ils figurent sur le document : nom de la banque, période (AAAA-MM-JJ), solde précédent / initial (opening_balance), nouveau solde / solde final (closing_balance), total des débits et total des crédits (valeurs positives). Sinon, mets null.

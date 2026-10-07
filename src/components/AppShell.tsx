@@ -1,5 +1,13 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { FileUp, LayoutDashboard, Settings, Table2, Wallet, LogOut } from "lucide-react";
+import {
+  FileUp,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Table2,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +17,7 @@ import { logout } from "@/lib/auth.functions";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/insights", label: "Analyse", icon: TrendingUp },
   { to: "/import", label: "Import", icon: FileUp },
   { to: "/data", label: "Data", icon: Table2 },
   { to: "/settings", label: "Réglages", icon: Settings },
