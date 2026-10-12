@@ -1,4 +1,4 @@
-import type { CategoryRule } from "@/lib/categories";
+import { isIncomeCategory, type CategoryRule } from "@/lib/categories";
 
 export type AiProvider = "gemini" | "anthropic" | "openai";
 
@@ -137,7 +137,11 @@ export const AI_PROVIDERS: Array<{ id: AiProvider; label: string; defaultModel: 
   { id: "openai", label: "OpenAI", defaultModel: "gpt-5-mini" },
 ];
 
-export function isIncome(entry: Pick<BudgetEntry, "entry_type" | "amount">): boolean {
+export function isIncome(
+  entry: Pick<BudgetEntry, "entry_type" | "amount"> & { category?: string },
+): boolean {
+  // Une opération rangée en « Revenus » / « Income » est une entrée, quel que soit son type.
+  if (entry.category && isIncomeCategory(entry.category)) return true;
   const type = entry.entry_type.toLowerCase();
   if (type.startsWith("recette") || type.startsWith("rentr")) return true;
   if (type.startsWith("dépense")) return false;

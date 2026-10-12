@@ -236,10 +236,15 @@ export function setCategoryOrder(categories: string[]) {
 
 const INCOME_NAMES = new Set(["revenus", "income", "salaire", "salaires"]);
 
+/** Catégorie de revenus (Revenus, Income…) : jamais comptée comme une dépense. */
+export function isIncomeCategory(category: string): boolean {
+  return INCOME_NAMES.has(normalizeText(category));
+}
+
 /** Couleur stable d'une catégorie, pour la repérer d'un coup d'œil. */
 export function categoryColor(category: string): string {
   if (!category) return "var(--muted-foreground)";
-  if (INCOME_NAMES.has(normalizeText(category))) return "var(--income)";
+  if (isIncomeCategory(category)) return "var(--income)";
   let index = categoryOrder.indexOf(category);
   if (index < 0) {
     if (!extraOrder.includes(category)) extraOrder.push(category);

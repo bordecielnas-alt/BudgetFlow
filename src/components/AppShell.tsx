@@ -7,6 +7,7 @@ import {
   LogOut,
   Settings,
   Table2,
+  TableProperties,
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
@@ -23,6 +24,7 @@ const NAV: NavItem[] = [
   { to: "/a-ranger", label: "À ranger", short: "À ranger", icon: Inbox, badge: true },
   { to: "/import", label: "Importer", short: "Importer", icon: FileUp },
   { to: "/data", label: "Opérations", short: "Opérations", icon: Table2 },
+  { to: "/detail", label: "Détail", short: "Détail", icon: TableProperties },
   { to: "/insights", label: "Analyse", short: "Analyse", icon: TrendingUp },
   { to: "/settings", label: "Réglages", short: "Réglages", icon: Settings },
 ];
@@ -133,7 +135,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Barre d'onglets (téléphone, tablette) */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
         aria-label="Navigation principale"
       >
         {NAV.filter((item) => item.to !== "/settings").map((item) => (

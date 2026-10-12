@@ -16,6 +16,7 @@ import { Route as PasswordRouteImport } from './routes/password'
 import { Route as AuthenticatedARangerRouteImport } from './routes/_authenticated/a-ranger'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDataRouteImport } from './routes/_authenticated/data'
+import { Route as AuthenticatedDetailRouteImport } from './routes/_authenticated/detail'
 import { Route as AuthenticatedImportRouteImport } from './routes/_authenticated/import'
 import { Route as AuthenticatedInsightsRouteImport } from './routes/_authenticated/insights'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -54,6 +55,11 @@ const AuthenticatedDataRoute = AuthenticatedDataRouteImport.update({
   path: '/data',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDetailRoute = AuthenticatedDetailRouteImport.update({
+  id: '/detail',
+  path: '/detail',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedImportRoute = AuthenticatedImportRouteImport.update({
   id: '/import',
   path: '/import',
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/a-ranger': typeof AuthenticatedARangerRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/data': typeof AuthenticatedDataRoute
+  '/detail': typeof AuthenticatedDetailRoute
   '/import': typeof AuthenticatedImportRoute
   '/insights': typeof AuthenticatedInsightsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByTo {
   '/a-ranger': typeof AuthenticatedARangerRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/data': typeof AuthenticatedDataRoute
+  '/detail': typeof AuthenticatedDetailRoute
   '/import': typeof AuthenticatedImportRoute
   '/insights': typeof AuthenticatedInsightsRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/_authenticated/a-ranger': typeof AuthenticatedARangerRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/data': typeof AuthenticatedDataRoute
+  '/_authenticated/detail': typeof AuthenticatedDetailRoute
   '/_authenticated/import': typeof AuthenticatedImportRoute
   '/_authenticated/insights': typeof AuthenticatedInsightsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/a-ranger'
     | '/dashboard'
     | '/data'
+    | '/detail'
     | '/import'
     | '/insights'
     | '/settings'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
     | '/a-ranger'
     | '/dashboard'
     | '/data'
+    | '/detail'
     | '/import'
     | '/insights'
     | '/settings'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '/_authenticated/a-ranger'
     | '/_authenticated/dashboard'
     | '/_authenticated/data'
+    | '/_authenticated/detail'
     | '/_authenticated/import'
     | '/_authenticated/insights'
     | '/_authenticated/settings'
@@ -200,6 +212,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDataRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/detail': {
+      id: '/_authenticated/detail'
+      path: '/detail'
+      fullPath: '/detail'
+      preLoaderRoute: typeof AuthenticatedDetailRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/import': {
       id: '/_authenticated/import'
       path: '/import'
@@ -228,6 +247,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedARangerRoute: typeof AuthenticatedARangerRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDataRoute: typeof AuthenticatedDataRoute
+  AuthenticatedDetailRoute: typeof AuthenticatedDetailRoute
   AuthenticatedImportRoute: typeof AuthenticatedImportRoute
   AuthenticatedInsightsRoute: typeof AuthenticatedInsightsRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -237,6 +257,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedARangerRoute: AuthenticatedARangerRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDataRoute: AuthenticatedDataRoute,
+  AuthenticatedDetailRoute: AuthenticatedDetailRoute,
   AuthenticatedImportRoute: AuthenticatedImportRoute,
   AuthenticatedInsightsRoute: AuthenticatedInsightsRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,

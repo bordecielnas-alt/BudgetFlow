@@ -11,7 +11,7 @@ type Entry = Pick<
 const DAY = 86_400_000;
 
 /** Montant signé : négatif pour une dépense, quel que soit le signe stocké (anciens CSV). */
-export function signedAmount(entry: Pick<Entry, "amount" | "entry_type">): number {
+export function signedAmount(entry: Pick<Entry, "amount" | "entry_type" | "category">): number {
   return isIncome(entry) ? Math.abs(entry.amount) : -Math.abs(entry.amount);
 }
 

@@ -150,7 +150,7 @@ const compactEuro = new Intl.NumberFormat("fr-FR", {
 function DashboardPage() {
   const { data: entries = [], isLoading } = useEntries();
   const latest = entries[0]?.entry_date ?? today();
-  const [scope, setScope] = useState<Scope>("month");
+  const [scope, setScope] = useState<Scope>("all");
   const [anchor, setAnchor] = useState<string | null>(null);
   const [custom, setCustom] = useState(() => ({
     from: `${today().slice(0, 4)}-01-01`,
