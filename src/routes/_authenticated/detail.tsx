@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { CategoryDot } from "@/components/CategoryPicker";
-import { PageHeader } from "@/components/page";
+import { Money, PageHeader } from "@/components/page";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -12,7 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useEntries } from "@/hooks/useEntries";
-import { formatMoney, formatMonth, isIncome } from "@/lib/budget-types";
+import { formatMoney, formatMonth, isIncome, type BudgetEntry } from "@/lib/budget-types";
+import { categoryColor } from "@/lib/categories";
 import { shiftMonth } from "@/lib/insights";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +63,7 @@ function DetailPage() {
     );
     // cellule « catégorie|mois » → montant
     const cells = new Map<string, number>();
+    const cellEntries = new Map<string, BudgetEntry[]>();
     const byCategory = new Map<string, number>();
     const byMonth = new Map<string, number>();
     for (const entry of expenses) {
@@ -68,6 +71,9 @@ function DetailPage() {
       const category = entry.category || UNCATEGORIZED;
       const amount = Math.abs(entry.amount);
       cells.set(`${category}|${month}`, (cells.get(`${category}|${month}`) ?? 0) + amount);
+      const list = cellEntries.get(`${category}|${month}`) ?? [];
+      list.push(entry);
+      cellEntries.set(`${category}|${month}`, list);
       byCategory.set(category, (byCategory.get(category) ?? 0) + amount);
       byMonth.set(month, (byMonth.get(month) ?? 0) + amount);
     }
@@ -81,7 +87,7 @@ function DetailPage() {
       .sort((a, b) => (a[0] === UNCATEGORIZED ? 1 : b[0] === UNCATEGORIZED ? -1 : b[1] - a[1]))
       .map(([name]) => name);
     const total = [...byMonth.values()].reduce((sum, value) => sum + value, 0);
-    return { cells, byCategory, byMonth, months, categories, total };
+    return { cells, cellEntries, byCategory, byMonth, months, categories, total };
   }, [entries, account]);
 
   const years = useMemo(
@@ -249,10 +255,10 @@ function DetailPage() {
                 </thead>
                 <tbody>
                   {data.categories.map((category) => (
-                    <tr key={category} className="group">
+                    <tr key={category} className="group" style={rowTint(category)}>
                       <th
                         scope="row"
-                        className="sticky left-0 z-10 border-b bg-card px-4 py-2 text-left font-normal group-hover:bg-accent"
+                        className="sticky left-0 z-10 border-b bg-(--row) px-4 py-2 text-left font-normal group-hover:bg-(--row-hover)"
                       >
                         <span className="flex items-center gap-2">
                           <CategoryDot category={category === UNCATEGORIZED ? "" : category} />
@@ -265,17 +271,28 @@ function DetailPage() {
                           <td
                             key={column.key}
                             className={cn(
-                              "num whitespace-nowrap border-b px-3 py-2 text-right group-hover:bg-accent",
+                              "num whitespace-nowrap border-b bg-(--row) p-0 text-right group-hover:bg-(--row-hover)",
                               (column.folded || column.months[0]!.endsWith("-01")) && "border-l",
-                              column.folded && "bg-muted/20 font-medium",
-                              value === 0 && "text-muted-foreground/50",
+                              column.folded && "font-medium",
+                              value === 0 && "px-3 py-2 text-muted-foreground/50",
                             )}
                           >
-                            {value === 0 ? "–" : cellMoney.format(value)}
+                            {value === 0 ? (
+                              "–"
+                            ) : (
+                              <CellDetail
+                                category={category}
+                                label={column.folded ? column.year : column.label}
+                                value={value}
+                                entries={column.months.flatMap(
+                                  (month) => data.cellEntries.get(`${category}|${month}`) ?? [],
+                                )}
+                              />
+                            )}
                           </td>
                         );
                       })}
-                      <td className="num whitespace-nowrap border-b border-l bg-muted/40 px-3 py-2 text-right font-medium group-hover:bg-accent">
+                      <td className="num whitespace-nowrap border-b border-l bg-(--row-strong) px-3 py-2 text-right font-medium group-hover:bg-(--row-hover)">
                         {cellMoney.format((data.byCategory.get(category) ?? 0) / monthCount)}
                       </td>
                     </tr>
@@ -316,5 +333,75 @@ function DetailPage() {
         </>
       )}
     </div>
+  );
+}
+
+/** Fond léger de la ligne, teinté par la couleur de la catégorie (opaque pour la colonne figée). */
+function rowTint(category: string): CSSProperties {
+  const color = category === UNCATEGORIZED ? "var(--muted-foreground)" : categoryColor(category);
+  return {
+    "--row": `color-mix(in srgb, ${color} 11%, var(--card))`,
+    "--row-strong": `color-mix(in srgb, ${color} 17%, var(--card))`,
+    "--row-hover": `color-mix(in srgb, ${color} 24%, var(--card))`,
+  } as CSSProperties;
+}
+
+const shortDate = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
+/** Montant cliquable : liste les opérations qui le composent. */
+function CellDetail({
+  category,
+  label,
+  value,
+  entries,
+}: {
+  category: string;
+  label: string;
+  value: number;
+  entries: BudgetEntry[];
+}) {
+  const sorted = [...entries].sort((a, b) => b.entry_date.localeCompare(a.entry_date));
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="num w-full px-3 py-2 text-right underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring data-[state=open]:underline"
+          aria-label={`${category}, ${label} : ${formatMoney(value)}, voir les opérations`}
+        >
+          {cellMoney.format(value)}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="end">
+        <div className="flex items-center gap-2 border-b px-4 py-3">
+          <CategoryDot category={category === UNCATEGORIZED ? "" : category} />
+          <p className="min-w-0 flex-1 truncate text-sm font-medium">
+            {category} · {label}
+          </p>
+          <span className="num text-sm font-semibold">{formatMoney(value)}</span>
+        </div>
+        <ul className="max-h-72 divide-y overflow-y-auto px-1">
+          {sorted.map((entry) => (
+            <li key={entry.id} className="flex items-center gap-3 px-3 py-2">
+              <span className="num w-10 shrink-0 text-xs text-muted-foreground">
+                {shortDate(entry.entry_date)}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm">{entry.payee || "Sans tiers"}</span>
+                {entry.description && entry.description !== entry.payee && (
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {entry.description}
+                  </span>
+                )}
+              </span>
+              <Money value={-Math.abs(entry.amount)} className="text-sm" />
+            </li>
+          ))}
+        </ul>
+        <p className="border-t px-4 py-2 text-xs text-muted-foreground">
+          {sorted.length} opération{sorted.length > 1 ? "s" : ""}
+        </p>
+      </PopoverContent>
+    </Popover>
   );
 }
